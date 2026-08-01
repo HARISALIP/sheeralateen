@@ -1,0 +1,30 @@
+
+    (function() {
+      if (document.getElementById('lt-br-fp-lib')) {
+        return;
+      }
+
+      var script = document.createElement('script');
+      script.src = 'https://assets.production.linktr.ee/client-brfp/br-fp-script.js';
+      script.async = true;
+      script.id = 'lt-br-fp-lib';
+
+      script.onload = function() {
+        if (typeof window.__lt_br_fp !== 'undefined' && typeof window.__lt_br_fp.generate === 'function') {
+          window.__lt_br_fp.generate({
+            networkProfile: {
+              asNumber: '17465',
+              country: 'IN',
+              city: 'ernakulam',
+              region: 'KL',
+              acceptEncoding: 'gzip, deflate, br, zstd',
+              acceptLanguage: 'en-US,en;q=0.9,ru;q=0.8',
+              ja4: 't13d1516h2_8daaf6152771_806a8c22fdea'
+            }
+          })
+        }
+      };
+
+      document.head.appendChild(script);
+    })();
+  
