@@ -24,7 +24,7 @@ $output = [];
 foreach ($logs as $log) {
     $payload = json_decode($log['payload'], true);
     $output[] = [
-        'webhook_id' => $log['webhook_id'],
+        'id' => $log['id'],
         'topic' => $log['topic'],
         'received_at' => $log['received_at'],
         'order_name' => $payload['name'] ?? 'Unknown',

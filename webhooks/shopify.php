@@ -97,7 +97,7 @@ try {
         $errorMessage = "Invalid JSON payload";
     }
 } catch (Exception $e) {
-    $errorMessage = $e->getMessage();
+    $errorMessage = $e->getMessage() . " in " . basename($e->getFile()) . ":" . $e->getLine();
 }
 
 // 7. Log the Webhook

@@ -85,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 // --- FILTER & PAGINATION ---
 $search = trim($_GET['search'] ?? '');
 $filterStatus = $_GET['status'] ?? '';
-$filterSync = $_GET['sync'] ?? '';
+$filterPayment = $_GET['payment'] ?? '';
 $page = max(1, (int)($_GET['page'] ?? 1));
 $limit = (int) get_setting($db, 'orders_per_page', '25');
 $offset = ($page - 1) * $limit;
@@ -101,9 +101,9 @@ if ($filterStatus !== '') {
     $where[] = "o.current_status = :status";
     $params[':status'] = $filterStatus;
 }
-if ($filterSync !== '') {
-    $where[] = "o.sync_status = :sync";
-    $params[':sync'] = $filterSync;
+if ($filterPayment !== '') {
+    $where[] = "o.payment_status = :payment";
+    $params[':payment'] = $filterPayment;
 }
 
 $whereSql = "WHERE " . implode(' AND ', $where);
@@ -119,7 +119,7 @@ $stmt = $db->prepare("
     SELECT o.* 
     FROM orders o
     $whereSql
-    ORDER BY o.created_at DESC
+    ORDER BY CAST(REPLACE(o.order_number, '#', '') AS UNSIGNED) DESC
     LIMIT :limit OFFSET :offset
 ");
 foreach ($params as $k => $v) {
@@ -184,17 +184,17 @@ function statusBadge($s) {
                 </select>
             </div>
             <div class="form-group">
-                <label for="sync">Sync Status</label>
-                <select name="sync" id="sync" class="form-control">
+                <label for="payment">Payment Status</label>
+                <select name="payment" id="payment" class="form-control">
                     <option value="">All</option>
-                    <option value="synced" <?= $filterSync === 'synced' ? 'selected' : '' ?>>Synced</option>
-                    <option value="waiting" <?= $filterSync === 'waiting' ? 'selected' : '' ?>>Waiting</option>
-                    <option value="failed" <?= $filterSync === 'failed' ? 'selected' : '' ?>>Failed</option>
+                    <option value="pending" <?= $filterPayment === 'pending' ? 'selected' : '' ?>>Pending</option>
+                    <option value="paid" <?= $filterPayment === 'paid' ? 'selected' : '' ?>>Paid</option>
+                    <option value="refunded" <?= $filterPayment === 'refunded' ? 'selected' : '' ?>>Refunded</option>
                 </select>
             </div>
             <div class="form-group" style="display: flex; gap: 8px;">
                 <button type="submit" class="btn btn-primary" style="flex: 1;">Filter</button>
-                <?php if ($search || $filterStatus || $filterSync): ?>
+                <?php if ($search || $filterStatus || $filterPayment): ?>
                 <a href="orders.php" class="btn btn-outline" style="flex: 1; text-align: center;">Clear</a>
                 <?php endif; ?>
             </div>

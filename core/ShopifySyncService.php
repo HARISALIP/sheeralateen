@@ -183,8 +183,8 @@ class ShopifySyncService
             }
             
             if ($branchCode) {
-                $stmtAttr = $this->db->prepare("SELECT id FROM branches WHERE branch_code = :code OR branch_name = :code LIMIT 1");
-                $stmtAttr->execute([':code' => $branchCode]);
+                $stmtAttr = $this->db->prepare("SELECT id FROM branches WHERE branch_code = :code1 OR branch_name = :code2 LIMIT 1");
+                $stmtAttr->execute([':code1' => $branchCode, ':code2' => $branchCode]);
                 $branchRow = $stmtAttr->fetch();
                 if ($branchRow) {
                     $assignedBranchId = $branchRow['id'];
@@ -239,18 +239,20 @@ class ShopifySyncService
             return 'skipped';
         }
 
+        $createdAt = isset($shopifyOrder['created_at']) ? date('Y-m-d H:i:s', strtotime($shopifyOrder['created_at'])) : date('Y-m-d H:i:s');
+
         // Insert new order
         $insertStmt = $this->db->prepare("
             INSERT INTO orders (
                 shopify_order_id, shopify_order_number, order_number, 
                 customer_name, customer_email, customer_phone, delivery_address,
                 total_amount, payment_status, shopify_financial_status, shopify_fulfillment_status,
-                sync_source, sync_status, shopify_synced_at, current_status, assigned_branch_id
+                sync_source, sync_status, shopify_synced_at, current_status, assigned_branch_id, created_at
             ) VALUES (
                 :sid, :snum, :onum,
                 :cname, :cemail, :cphone, :address,
                 :total, :pstatus, :s_financial, :s_fulfillment,
-                1, 'synced', NOW(), 'New', :branch_id
+                1, 'synced', NOW(), 'New', :branch_id, :created_at
             )
         ");
         $insertStmt->execute([
@@ -265,7 +267,8 @@ class ShopifySyncService
             ':pstatus' => $localPaymentStatus,
             ':s_financial' => $financialStatus,
             ':s_fulfillment' => $fulfillmentStatus,
-            ':branch_id' => $assignedBranchId
+            ':branch_id' => $assignedBranchId,
+            ':created_at' => $createdAt
         ]);
 
         $newOrderId = (int) $this->db->lastInsertId();
