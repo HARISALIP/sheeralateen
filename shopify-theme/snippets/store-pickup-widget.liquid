@@ -1,0 +1,667 @@
+{% comment %}
+  store-pickup-widget.liquid
+  =============================================================
+  Sheeralateen — Store Pickup Location Selector
+  Bypasses Shopify Basic 10-location limit using a custom
+  PHP backend at sheeralateen.fix4.in.
+
+  USAGE — add this to your cart template:
+    {% render 'store-pickup-widget' %}
+
+  DEPENDENCIES (already included below via CDN):
+    - Mapbox GL JS v3 (free public token required)
+    - store-pickup.css (upload to theme assets)
+
+  CART ATTRIBUTES SET ON SELECTION:
+    attributes.Pickup_Store_ID      → branch_code  (e.g. "ALAJAWEED")
+    attributes.Pickup_Store_Name    → branch_name  (e.g. "Al Ajaweed")
+    attributes.Pickup_Store_Address → address      (e.g. "Jeddah")
+    attributes.Pickup_Maps_URL      → maps_url     (Google Maps link)
+  =============================================================
+{% endcomment %}
+
+{% comment %} ── CONFIG ─────────────────────────────────────────────── {% endcomment %}
+{% assign sp_api_base   = 'https://sheeralateen.fix4.in' %}
+{% assign sp_mapbox_token = 'YOUR_MAPBOX_PUBLIC_TOKEN' %}
+{% comment %}
+  ↑ Replace YOUR_MAPBOX_PUBLIC_TOKEN with your free token from mapbox.com
+    Sign up at https://account.mapbox.com/auth/signup/
+    Then copy the "Default public token" from your account dashboard.
+{% endcomment %}
+
+{% comment %} ── STYLES & MAPBOX GL ─────────────────────────────────── {% endcomment %}
+{{ 'store-pickup.css' | asset_url | stylesheet_tag }}
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.4.0/mapbox-gl.css" rel="stylesheet">
+
+{% comment %} ── WIDGET HTML ────────────────────────────────────────── {% endcomment %}
+<div id="sp-widget-root" data-api="{{ sp_api_base }}" data-token="{{ sp_mapbox_token }}">
+
+  {% comment %} TRIGGER CARD — visible until store is selected {% endcomment %}
+  <div id="sp-trigger-card" class="sp-trigger-card" role="button" tabindex="0"
+       aria-label="Select a store pickup location"
+       onclick="StorePickup.openModal()"
+       onkeydown="if(event.key==='Enter'||event.key===' ')StorePickup.openModal()">
+    <div class="sp-trigger-icon">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+      </svg>
+    </div>
+    <div class="sp-trigger-text">
+      <strong>Select Store Pickup Location</strong>
+      <span>Choose from {{ sp_api_base | replace: 'https://', '' | append: ' — all 28+ branches' }}</span>
+    </div>
+    <div class="sp-trigger-caret">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <path d="M7.5 5l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+  </div>
+
+  {% comment %} SELECTED STORE BADGE — shown after selection {% endcomment %}
+  <div id="sp-selected-card" class="sp-selected-card" style="display:none;">
+    <div class="sp-selected-check">
+      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <div class="sp-selected-info">
+      <div class="sp-selected-label">🏪 Pickup Location</div>
+      <div class="sp-selected-name" id="sp-sel-name">—</div>
+      <div class="sp-selected-address" id="sp-sel-address">—</div>
+    </div>
+    <div class="sp-selected-actions">
+      <a id="sp-sel-maps-link" href="#" target="_blank" rel="noopener"
+         class="sp-btn-map-link" title="View on Google Maps" style="display:none;">
+        <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+      </a>
+      <button class="sp-btn-change" onclick="StorePickup.openModal()">Change</button>
+    </div>
+  </div>
+
+</div>
+
+{% comment %} ── MODAL ─────────────────────────────────────────────── {% endcomment %}
+<div id="sp-overlay" class="sp-overlay" role="dialog" aria-modal="true"
+     aria-label="Store Pickup Location Selector"
+     onclick="if(event.target===this)StorePickup.closeModal()">
+
+  <div class="sp-modal">
+
+    {% comment %} Modal Header {% endcomment %}
+    <div class="sp-modal-header">
+      <div class="sp-modal-title">
+        <div class="sp-modal-title-icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+          </svg>
+        </div>
+        <div>
+          <h2>Select Pickup Location</h2>
+          <div class="sp-modal-subtitle">All Sheeralateen branches across Saudi Arabia</div>
+        </div>
+      </div>
+      <button class="sp-modal-close" onclick="StorePickup.closeModal()" aria-label="Close">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    {% comment %} Search + GPS Row {% endcomment %}
+    <div class="sp-search-row">
+      <div class="sp-search-wrap">
+        <span class="sp-search-icon">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </span>
+        <input type="text" id="sp-search" class="sp-search-input"
+               placeholder="Search by branch name or city…"
+               oninput="StorePickup.onSearch(this.value)"
+               autocomplete="off" autocorrect="off" spellcheck="false">
+      </div>
+      <button class="sp-gps-btn" id="sp-gps-btn" onclick="StorePickup.requestLocation()" title="Find nearest branch">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3"/><circle cx="12" cy="12" r="8" stroke-dasharray="2 4"/></svg>
+        <span>Nearest</span>
+      </button>
+    </div>
+
+    {% comment %} Body: Sidebar + Map {% endcomment %}
+    <div class="sp-body">
+
+      {% comment %} Branch List Sidebar {% endcomment %}
+      <div class="sp-sidebar">
+        <div class="sp-list-header" id="sp-list-header">All Branches</div>
+        <div class="sp-branch-list" id="sp-branch-list">
+          <div class="sp-loading">
+            <div class="sp-spinner"></div>
+            Loading branches…
+          </div>
+        </div>
+        <div class="sp-no-results" id="sp-no-results">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          No branches found for "<span id="sp-no-results-q"></span>"
+        </div>
+      </div>
+
+      {% comment %} Map Panel {% endcomment %}
+      <div class="sp-map-panel">
+        <div id="sp-map"></div>
+        <div class="sp-map-nearest-badge" id="sp-nearest-badge">
+          📍 Showing nearest branches
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+{% comment %} ── TOAST NOTIFICATION ─────────────────────────────────── {% endcomment %}
+<div id="sp-toast" class="sp-toast" role="alert" aria-live="polite"></div>
+
+{% comment %} ── JAVASCRIPT ─────────────────────────────────────────── {% endcomment %}
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.4.0/mapbox-gl.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  /* ── Configuration ─────────────────────────────────────── */
+  const ROOT      = document.getElementById('sp-widget-root');
+  const API_BASE  = ROOT.dataset.api;       // https://sheeralateen.fix4.in
+  const MB_TOKEN  = ROOT.dataset.token;     // Mapbox public token
+  const LS_KEY    = 'sp_selected_store';    // localStorage persistence key
+
+  /* ── State ──────────────────────────────────────────────── */
+  let allBranches  = [];    // all branches from API
+  let filteredBranches = [];
+  let map          = null;
+  let markers      = {};    // { branch_code: MapboxMarker }
+  let activePopup  = null;
+  let selectedCode = null;  // branch_code of current selection
+  let mapInitialised = false;
+  let userLat      = null;
+  let userLng      = null;
+
+  /* ── DOM References ─────────────────────────────────────── */
+  const overlay        = document.getElementById('sp-overlay');
+  const triggerCard    = document.getElementById('sp-trigger-card');
+  const selectedCard   = document.getElementById('sp-selected-card');
+  const selName        = document.getElementById('sp-sel-name');
+  const selAddress     = document.getElementById('sp-sel-address');
+  const selMapsLink    = document.getElementById('sp-sel-maps-link');
+  const branchList     = document.getElementById('sp-branch-list');
+  const noResults      = document.getElementById('sp-no-results');
+  const noResultsQ     = document.getElementById('sp-no-results-q');
+  const listHeader     = document.getElementById('sp-list-header');
+  const nearestBadge   = document.getElementById('sp-nearest-badge');
+  const gpsBtnEl       = document.getElementById('sp-gps-btn');
+  const searchInput    = document.getElementById('sp-search');
+  const toastEl        = document.getElementById('sp-toast');
+
+  /* ── Toast ──────────────────────────────────────────────── */
+  let toastTimer = null;
+  function showToast(msg, type = '', duration = 3000) {
+    toastEl.textContent  = msg;
+    toastEl.className    = 'sp-toast sp-toast-show' + (type ? ' sp-toast-' + type : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toastEl.className = 'sp-toast'; }, duration);
+  }
+
+  /* ── Modal ──────────────────────────────────────────────── */
+  function openModal() {
+    overlay.classList.add('sp-open');
+    document.body.style.overflow = 'hidden';
+    searchInput.focus();
+    if (!mapInitialised) initMap();
+    if (allBranches.length === 0) fetchBranches();
+  }
+
+  function closeModal() {
+    overlay.classList.remove('sp-open');
+    document.body.style.overflow = '';
+  }
+
+  /* ── Fetch Branches ─────────────────────────────────────── */
+  function fetchBranches(lat, lng) {
+    let url = API_BASE + '/api/nearest_branches.php';
+    if (lat !== undefined && lng !== undefined) {
+      url += '?lat=' + lat + '&lng=' + lng;
+    }
+
+    return fetch(url)
+      .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(data => {
+        if (data.status !== 'success') throw new Error(data.message || 'API error');
+        allBranches = data.data;
+        filteredBranches = allBranches;
+
+        const isSortedByDist = data.sorted_by === 'distance';
+        listHeader.textContent = isSortedByDist
+          ? '📍 Nearest to You (' + allBranches.length + ')'
+          : 'All Branches (' + allBranches.length + ')';
+
+        nearestBadge.classList.toggle('sp-visible', isSortedByDist);
+        renderList(filteredBranches);
+        placePins(allBranches);
+
+        // If sorted by distance, fly map to nearest branch
+        if (isSortedByDist && allBranches.length > 0 && map) {
+          const nearest = allBranches[0];
+          if (nearest.longitude && nearest.latitude) {
+            map.flyTo({ center: [nearest.longitude, nearest.latitude], zoom: 12, speed: 1.2 });
+          }
+        }
+      })
+      .catch(err => {
+        branchList.innerHTML = '<p style="padding:16px;color:#c0392b;font-size:13px;">Failed to load branches. Please try again.</p>';
+        console.error('[StorePickup] fetchBranches error:', err);
+      });
+  }
+
+  /* ── Render Branch List ─────────────────────────────────── */
+  function renderList(branches) {
+    branchList.innerHTML = '';
+
+    if (branches.length === 0) {
+      noResults.style.display = 'block';
+      return;
+    }
+    noResults.style.display = 'none';
+
+    const frag = document.createDocumentFragment();
+
+    branches.forEach(function (b) {
+      const item = document.createElement('div');
+      item.className = 'sp-branch-item' +
+        (b.branch_code === selectedCode ? ' sp-selected' : '');
+      item.dataset.code = b.branch_code;
+
+      const distHTML = b.distance_km !== null
+        ? '<span class="sp-branch-distance">' + b.distance_km.toFixed(1) + ' km</span>'
+        : '';
+
+      const selectLabel = b.branch_code === selectedCode
+        ? '✓ Selected'
+        : 'Select This Branch';
+
+      item.innerHTML =
+        '<div class="sp-branch-pin">📍</div>' +
+        '<div class="sp-branch-details">' +
+          '<div class="sp-branch-name">' + escHtml(b.name) + '</div>' +
+          '<div class="sp-branch-city">' + escHtml(b.address || '') + '</div>' +
+          '<div class="sp-branch-meta">' + distHTML + '</div>' +
+          '<button class="sp-branch-select-btn" data-code="' + escHtml(b.branch_code) + '">' +
+            selectLabel +
+          '</button>' +
+        '</div>';
+
+      // Click on item → highlight + fly map
+      item.addEventListener('click', function (e) {
+        if (e.target.classList.contains('sp-branch-select-btn')) return;
+        highlightBranch(b.branch_code);
+        flyToMarker(b);
+      });
+
+      // Click select button → confirm selection
+      item.querySelector('.sp-branch-select-btn').addEventListener('click', function (e) {
+        e.stopPropagation();
+        selectBranch(b);
+      });
+
+      frag.appendChild(item);
+    });
+
+    branchList.appendChild(frag);
+  }
+
+  /* ── Search Filter ──────────────────────────────────────── */
+  function onSearch(q) {
+    const query = q.trim().toLowerCase();
+
+    if (query === '') {
+      filteredBranches = allBranches;
+      noResultsQ.textContent = '';
+    } else {
+      filteredBranches = allBranches.filter(function (b) {
+        return b.name.toLowerCase().includes(query) ||
+               (b.address || '').toLowerCase().includes(query) ||
+               (b.branch_code || '').toLowerCase().includes(query);
+      });
+      noResultsQ.textContent = q;
+    }
+
+    renderList(filteredBranches);
+
+    // Dim non-matching markers on map
+    Object.keys(markers).forEach(function (code) {
+      const inFilter = filteredBranches.some(function (b) { return b.branch_code === code; });
+      markers[code].getElement().style.opacity = inFilter ? '1' : '0.2';
+    });
+  }
+
+  /* ── Highlight Branch ───────────────────────────────────── */
+  function highlightBranch(code) {
+    document.querySelectorAll('.sp-branch-item').forEach(function (el) {
+      el.classList.remove('sp-highlighted');
+    });
+    const el = document.querySelector('.sp-branch-item[data-code="' + code + '"]');
+    if (el) {
+      el.classList.add('sp-highlighted');
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+
+  /* ── Select Branch (final confirmation) ─────────────────── */
+  function selectBranch(branch) {
+    selectedCode = branch.branch_code;
+
+    // 1. Save to Shopify Cart Attributes
+    updateCartAttributes(branch);
+
+    // 2. Update UI — show selected badge
+    selName.textContent    = branch.name;
+    selAddress.textContent = branch.address || '';
+    triggerCard.style.display    = 'none';
+    selectedCard.style.display   = 'flex';
+
+    if (branch.maps_url) {
+      selMapsLink.href            = branch.maps_url;
+      selMapsLink.style.display   = 'flex';
+    } else {
+      selMapsLink.style.display   = 'none';
+    }
+
+    // 3. Persist to localStorage (survives page refresh before checkout)
+    localStorage.setItem(LS_KEY, JSON.stringify({
+      branch_code: branch.branch_code,
+      name:        branch.name,
+      address:     branch.address || '',
+      maps_url:    branch.maps_url || '',
+    }));
+
+    // 4. Close modal, show toast
+    closeModal();
+    showToast('✓ ' + branch.name + ' selected for pickup!', 'success');
+
+    // 5. Re-render list to mark selected
+    renderList(filteredBranches);
+  }
+
+  /* ── Shopify Cart Attributes Update ─────────────────────── */
+  function updateCartAttributes(branch) {
+    const attributes = {
+      'Pickup_Store_ID':      branch.branch_code,
+      'Pickup_Store_Name':    branch.name,
+      'Pickup_Store_Address': branch.address || '',
+      'Pickup_Maps_URL':      branch.maps_url || '',
+    };
+
+    fetch('/cart/update.js', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ attributes: attributes }),
+    })
+    .then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function () {
+      console.log('[StorePickup] Cart attributes updated:', attributes);
+      // Dispatch custom event — theme can listen and refresh cart summary
+      document.dispatchEvent(new CustomEvent('storePickupSelected', { detail: { branch: branch } }));
+    })
+    .catch(function (err) {
+      console.error('[StorePickup] Cart update failed:', err);
+      showToast('Note: Branch saved locally, but cart sync failed.', 'error');
+    });
+  }
+
+  /* ── Geolocation ────────────────────────────────────────── */
+  function requestLocation() {
+    if (!navigator.geolocation) {
+      showToast('Geolocation is not supported by your browser.', 'error');
+      return;
+    }
+
+    gpsBtnEl.classList.add('sp-locating');
+    gpsBtnEl.disabled = true;
+
+    navigator.geolocation.getCurrentPosition(
+      function (pos) {
+        userLat = pos.coords.latitude;
+        userLng = pos.coords.longitude;
+        gpsBtnEl.classList.remove('sp-locating');
+        gpsBtnEl.disabled = false;
+        searchInput.value = '';
+
+        // Fly map to user location
+        if (map) {
+          map.flyTo({ center: [userLng, userLat], zoom: 11, speed: 1.4 });
+
+          // Add a user-location dot
+          const userMarkerEl = document.createElement('div');
+          userMarkerEl.style.cssText =
+            'width:14px;height:14px;border-radius:50%;' +
+            'background:#3b82f6;border:2.5px solid #fff;' +
+            'box-shadow:0 0 0 4px rgba(59,130,246,0.3);';
+          new mapboxgl.Marker({ element: userMarkerEl })
+            .setLngLat([userLng, userLat])
+            .addTo(map);
+        }
+
+        // Fetch branches sorted by distance
+        fetchBranches(userLat, userLng);
+      },
+      function (err) {
+        gpsBtnEl.classList.remove('sp-locating');
+        gpsBtnEl.disabled = false;
+
+        const msgs = {
+          1: 'Location permission denied. Please enable location access in browser settings.',
+          2: 'Location unavailable. Please search by district or city.',
+          3: 'Location request timed out.',
+        };
+        showToast(msgs[err.code] || 'Location error.', 'error');
+      },
+      { timeout: 8000, maximumAge: 60000 }
+    );
+  }
+
+  /* ── Mapbox GL Initialisation ───────────────────────────── */
+  function initMap() {
+    if (mapInitialised || !MB_TOKEN || MB_TOKEN === 'YOUR_MAPBOX_PUBLIC_TOKEN') {
+      if (!MB_TOKEN || MB_TOKEN === 'YOUR_MAPBOX_PUBLIC_TOKEN') {
+        document.getElementById('sp-map').innerHTML =
+          '<div class="sp-loading" style="color:#c0392b;">' +
+          '<svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#c0392b" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
+          'Map requires a Mapbox token.<br><small>See INSTALL.md for setup steps.</small></div>';
+      }
+      return;
+    }
+
+    mapboxgl.accessToken = MB_TOKEN;
+
+    map = new mapboxgl.Map({
+      container: 'sp-map',
+      style:     'mapbox://styles/mapbox/light-v11',
+      center:    [39.1728, 21.5433],  // Default: Jeddah
+      zoom:      10,
+      locale:    'ar',
+    });
+
+    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+    map.addControl(new mapboxgl.ScaleControl(), 'bottom-right');
+
+    mapInitialised = true;
+    console.log('[StorePickup] Mapbox GL initialised');
+  }
+
+  /* ── Place Map Pins ─────────────────────────────────────── */
+  function placePins(branches) {
+    if (!map) return;
+
+    // Remove old markers
+    Object.values(markers).forEach(function (m) { m.remove(); });
+    markers = {};
+
+    // Wait for map style to load before adding markers
+    function addMarkers() {
+      const bounds = new mapboxgl.LngLatBounds();
+      let hasBounds = false;
+
+      branches.forEach(function (b) {
+        if (!b.longitude || !b.latitude) return;
+
+        const lng = b.longitude;
+        const lat = b.latitude;
+
+        // Custom pin element
+        const el = document.createElement('div');
+        el.style.cssText =
+          'width:28px;height:28px;border-radius:50% 50% 50% 0;' +
+          'background:#1a6b4a;border:2px solid #fff;' +
+          'cursor:pointer;transition:all 0.15s ease;' +
+          'box-shadow:0 2px 8px rgba(0,0,0,0.25);' +
+          'transform:rotate(-45deg);';
+
+        // Inner dot
+        const dot = document.createElement('div');
+        dot.style.cssText =
+          'width:10px;height:10px;border-radius:50%;background:#fff;' +
+          'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);';
+        el.appendChild(dot);
+        el.style.position = 'relative';
+
+        // Hover effects
+        el.addEventListener('mouseenter', function () {
+          el.style.background  = '#22895f';
+          el.style.transform   = 'rotate(-45deg) scale(1.2)';
+          el.style.zIndex      = '10';
+          highlightBranch(b.branch_code);
+        });
+        el.addEventListener('mouseleave', function () {
+          el.style.background  = b.branch_code === selectedCode ? '#f0a500' : '#1a6b4a';
+          el.style.transform   = 'rotate(-45deg) scale(1)';
+          el.style.zIndex      = '1';
+        });
+
+        // Popup
+        const popup = new mapboxgl.Popup({ offset: 30, closeButton: false, maxWidth: '220px' })
+          .setHTML(
+            '<div class="sp-popup-name">' + escHtml(b.name) + '</div>' +
+            '<div class="sp-popup-city">' + escHtml(b.address || '') +
+              (b.distance_km !== null ? ' &bull; <b>' + b.distance_km.toFixed(1) + ' km</b>' : '') +
+            '</div>' +
+            (b.maps_url
+              ? '<a href="' + escHtml(b.maps_url) + '" target="_blank" rel="noopener" style="font-size:11px;color:#1a6b4a;display:block;margin-bottom:6px;">View on Google Maps ↗</a>'
+              : '') +
+            '<button class="sp-popup-select" onclick="StorePickup._selectByCode(\'' + b.branch_code + '\')">' +
+              (b.branch_code === selectedCode ? '✓ Selected' : 'Select This Branch') +
+            '</button>'
+          );
+
+        const marker = new mapboxgl.Marker({ element: el })
+          .setLngLat([lng, lat])
+          .setPopup(popup)
+          .addTo(map);
+
+        el.addEventListener('click', function () {
+          if (activePopup) activePopup.remove();
+          marker.togglePopup();
+          activePopup = popup;
+          highlightBranch(b.branch_code);
+        });
+
+        // Colour selected branch pin gold
+        if (b.branch_code === selectedCode) {
+          el.style.background = '#f0a500';
+        }
+
+        markers[b.branch_code] = marker;
+        bounds.extend([lng, lat]);
+        hasBounds = true;
+      });
+
+      if (hasBounds) {
+        map.fitBounds(bounds, { padding: 60, maxZoom: 12, duration: 1000 });
+      }
+    }
+
+    if (map.isStyleLoaded()) {
+      addMarkers();
+    } else {
+      map.once('load', addMarkers);
+    }
+  }
+
+  /* ── Fly To Marker ──────────────────────────────────────── */
+  function flyToMarker(b) {
+    if (!map || !b.longitude || !b.latitude) return;
+    map.flyTo({ center: [b.longitude, b.latitude], zoom: 14, speed: 1.2, essential: true });
+    if (markers[b.branch_code]) {
+      setTimeout(function () {
+        if (activePopup) activePopup.remove();
+        markers[b.branch_code].togglePopup();
+        activePopup = markers[b.branch_code].getPopup();
+      }, 600);
+    }
+  }
+
+  /* ── Select By Code (called from map popup) ─────────────── */
+  function _selectByCode(code) {
+    const branch = allBranches.find(function (b) { return b.branch_code === code; });
+    if (branch) selectBranch(branch);
+  }
+
+  /* ── Restore Persisted Selection ────────────────────────── */
+  function restoreSelection() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(LS_KEY));
+      if (saved && saved.branch_code) {
+        selectedCode           = saved.branch_code;
+        selName.textContent    = saved.name;
+        selAddress.textContent = saved.address || '';
+        triggerCard.style.display  = 'none';
+        selectedCard.style.display = 'flex';
+
+        if (saved.maps_url) {
+          selMapsLink.href          = saved.maps_url;
+          selMapsLink.style.display = 'flex';
+        }
+
+        // Re-sync to cart in case session was cleared
+        updateCartAttributes({
+          branch_code: saved.branch_code,
+          name:        saved.name,
+          address:     saved.address || '',
+          maps_url:    saved.maps_url || '',
+        });
+      }
+    } catch (e) { /* ignore parse errors */ }
+  }
+
+  /* ── Keyboard (Escape) ──────────────────────────────────── */
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeModal();
+  });
+
+  /* ── Utility: HTML escape ───────────────────────────────── */
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  /* ── Public API ─────────────────────────────────────────── */
+  window.StorePickup = {
+    openModal:      openModal,
+    closeModal:     closeModal,
+    onSearch:       onSearch,
+    requestLocation: requestLocation,
+    _selectByCode:  _selectByCode,
+  };
+
+  /* ── Init ────────────────────────────────────────────────── */
+  restoreSelection();
+
+})();
+</script>

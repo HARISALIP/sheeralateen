@@ -172,6 +172,26 @@ class ShopifySyncService
             ActivityLogger::log(null, 'shopify_sync_warning', "Could not fetch fulfillment orders for {$orderNumber}: " . $e->getMessage());
         }
 
+        // Fallback: Check note_attributes for cart attributes injected by the store pickup widget
+        if (!$assignedBranchId && isset($shopifyOrder['note_attributes']) && is_array($shopifyOrder['note_attributes'])) {
+            $branchCode = null;
+            foreach ($shopifyOrder['note_attributes'] as $attr) {
+                if (isset($attr['name']) && $attr['name'] === 'Pickup_Store_ID') {
+                    $branchCode = $attr['value'];
+                    break;
+                }
+            }
+            
+            if ($branchCode) {
+                $stmtAttr = $this->db->prepare("SELECT id FROM branches WHERE branch_code = :code OR branch_name = :code LIMIT 1");
+                $stmtAttr->execute([':code' => $branchCode]);
+                $branchRow = $stmtAttr->fetch();
+                if ($branchRow) {
+                    $assignedBranchId = $branchRow['id'];
+                }
+            }
+        }
+
         // Check if order already exists
         $stmt = $this->db->prepare("SELECT id, shopify_financial_status, shopify_fulfillment_status FROM orders WHERE shopify_order_id = :sid OR order_number = :onum LIMIT 1");
         $stmt->execute([':sid' => $shopifyId, ':onum' => $orderNumber]);
@@ -193,7 +213,8 @@ class ShopifySyncService
                         shopify_financial_status = :s_financial,
                         shopify_fulfillment_status = :s_fulfillment,
                         shopify_synced_at = NOW(),
-                        sync_source = 1
+                        sync_source = 1,
+                        assigned_branch_id = COALESCE(:branch_id, assigned_branch_id)
                     WHERE id = :id
                 ");
                 $updateStmt->execute([
@@ -205,6 +226,7 @@ class ShopifySyncService
                     ':pstatus' => $localPaymentStatus,
                     ':s_financial' => $financialStatus,
                     ':s_fulfillment' => $fulfillmentStatus,
+                    ':branch_id' => $assignedBranchId,
                     ':id' => $existing['id']
                 ]);
                 

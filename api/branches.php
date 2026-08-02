@@ -2,47 +2,83 @@
 /**
  * api/branches.php
  * ---------------------------------------------------------
- * Public lightweight API to return active branches.
- * Used by Shopify storefront for dynamic dropdown population.
+ * Public API: Returns all active branches with full details.
+ * Used by Shopify storefront widget for map initialisation
+ * and dropdown population.
+ *
+ * GET /api/branches.php           — all branches, alpha order
+ * GET /api/branches.php?q=jeddah  — filtered by name / city
  */
 
-// Temporarily enable error reporting for debugging
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
-
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *'); // Allow Shopify storefront to call it
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
+header('Cache-Control: public, max-age=300'); // 5-minute cache
 
-// Check if required files exist before requiring them
-$configPath = __DIR__ . '/../config/config.php';
-$dbPath = __DIR__ . '/../core/Database.php';
-
-if (!file_exists($configPath)) {
-    die(json_encode(['status' => 'error', 'message' => 'config.php not found at ' . $configPath]));
-}
-if (!file_exists($dbPath)) {
-    die(json_encode(['status' => 'error', 'message' => 'Database.php not found at ' . $dbPath]));
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
 }
 
-require_once $configPath;
-require_once $dbPath;
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../core/Database.php';
+
+$search = isset($_GET['q']) ? trim($_GET['q']) : '';
 
 try {
     $db = Database::getConnection();
-    $stmt = $db->query("SELECT id, branch_name as name FROM branches WHERE status = 'active' ORDER BY branch_name ASC");
+
+    $sql = "
+        SELECT
+            id,
+            branch_code,
+            branch_name AS name,
+            address,
+            phone,
+            maps_url,
+            latitude,
+            longitude
+        FROM  branches
+        WHERE status    = 'active'
+          AND deleted_at IS NULL
+    ";
+
+    if ($search !== '') {
+        $sql .= " AND (branch_name LIKE :search OR address LIKE :search2) ";
+    }
+
+    $sql .= " ORDER BY branch_name ASC";
+
+    $stmt = $db->prepare($sql);
+
+    if ($search !== '') {
+        $param = '%' . $search . '%';
+        $stmt->bindValue(':search',  $param, PDO::PARAM_STR);
+        $stmt->bindValue(':search2', $param, PDO::PARAM_STR);
+    }
+
+    $stmt->execute();
     $branches = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Cast types
+    foreach ($branches as &$b) {
+        $b['id']        = (int)   $b['id'];
+        $b['latitude']  = $b['latitude']  !== null ? (float) $b['latitude']  : null;
+        $b['longitude'] = $b['longitude'] !== null ? (float) $b['longitude'] : null;
+    }
+    unset($b);
 
     echo json_encode([
         'status' => 'success',
-        'data' => $branches
-    ]);
+        'count'  => count($branches),
+        'data'   => $branches,
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
 } catch (Throwable $e) {
     http_response_code(500);
     echo json_encode([
-        'status' => 'error',
+        'status'  => 'error',
         'message' => $e->getMessage(),
-        'file' => $e->getFile(),
-        'line' => $e->getLine(),
-        'trace' => $e->getTraceAsString()
     ]);
 }

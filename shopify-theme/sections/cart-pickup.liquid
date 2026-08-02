@@ -1,0 +1,35 @@
+{% comment %}
+  sections/cart-pickup.liquid
+  Online Store 2.0 Section — wraps the store-pickup-widget snippet.
+  Add this to your cart template via Shopify Theme Editor.
+{% endcomment %}
+
+{% if section.settings.enabled %}
+  {% render 'store-pickup-widget' %}
+{% endif %}
+
+{% schema %}
+{
+  "name": "Store Pickup Selector",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Store Pickup"
+    },
+    {
+      "type": "checkbox",
+      "id": "enabled",
+      "label": "Enable store pickup widget",
+      "default": true
+    }
+  ],
+  "presets": [
+    {
+      "name": "Store Pickup Selector",
+      "category": "Cart"
+    }
+  ]
+}
+{% endschema %}
