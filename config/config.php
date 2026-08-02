@@ -12,9 +12,9 @@
 
 // ---- Database ----
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'u265225504_sheeralateen');
+define('DB_NAME', 'u265225504_sheera');
 define('DB_USER', 'u265225504_sheera_app');
-define('DB_PASS', 'H#R2026!Mg8@XqL9');
+define('DB_PASS', 'dW5;dxH:');
 define('DB_CHARSET', 'utf8mb4');
 
 // ---- Application ----
