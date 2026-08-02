@@ -175,21 +175,21 @@ function statusBadge($s) {
                 <input type="text" name="search" id="search" class="form-control" value="<?= e($search) ?>" placeholder="Order #, Name, Phone">
             </div>
             <div class="form-group">
-                <label for="status">Order Status</label>
-                <select name="status" id="status" class="form-control">
-                    <option value="">All Statuses</option>
-                    <?php foreach(['New','Assigned','Accepted','Preparing','Ready','Out For Delivery','Delivered','Cancelled','Returned'] as $st): ?>
-                        <option value="<?= $st ?>" <?= $filterStatus === $st ? 'selected' : '' ?>><?= $st ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </div>
-            <div class="form-group">
                 <label for="payment">Payment Status</label>
                 <select name="payment" id="payment" class="form-control">
                     <option value="">All</option>
                     <option value="pending" <?= $filterPayment === 'pending' ? 'selected' : '' ?>>Pending</option>
                     <option value="paid" <?= $filterPayment === 'paid' ? 'selected' : '' ?>>Paid</option>
                     <option value="refunded" <?= $filterPayment === 'refunded' ? 'selected' : '' ?>>Refunded</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="status">Order Status</label>
+                <select name="status" id="status" class="form-control">
+                    <option value="">All Statuses</option>
+                    <?php foreach(['New','Assigned','Accepted','Preparing','Ready','Out For Delivery','Delivered','Cancelled','Returned'] as $st): ?>
+                        <option value="<?= $st ?>" <?= $filterStatus === $st ? 'selected' : '' ?>><?= $st ?></option>
+                    <?php endforeach; ?>
                 </select>
             </div>
             <div class="form-group" style="display: flex; gap: 8px;">
