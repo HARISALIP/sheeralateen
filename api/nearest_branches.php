@@ -97,7 +97,7 @@ try {
                     2
                 ) AS distance_km
             FROM  branches
-            WHERE status   = 'active'
+            WHERE is_active = 1
               AND deleted_at IS NULL
               AND latitude   IS NOT NULL
               AND longitude  IS NOT NULL
@@ -143,7 +143,7 @@ try {
                 longitude,
                 NULL AS distance_km
             FROM  branches
-            WHERE status    = 'active'
+            WHERE is_active = 1
               AND deleted_at IS NULL
         ";
 
