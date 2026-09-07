@@ -268,7 +268,8 @@ do {
 
 } while (false);
 
-// ── 12. Log every request to webhook_logs ────────────────────
+// ── 12. Log every request to webhook_logs ── [TEMP DEBUG] ────
+$debugLog = ['processed' => $processed, 'error_msg' => $errorMessage];
 try {
     $db->prepare("
         INSERT INTO webhook_logs
@@ -281,13 +282,22 @@ try {
         ':processed' => $processed,
         ':error'     => $errorMessage,
     ]);
+    $debugLog['webhook_log_insert'] = 'OK, id=' . $db->lastInsertId();
 } catch (PDOException $logEx) {
-    error_log(
-        'Leajlak webhook: Failed to write to webhook_logs: '
-        . $logEx->getMessage()
-    );
+    $debugLog['webhook_log_insert'] = 'FAILED: ' . $logEx->getMessage();
+}
+
+// TEMP: expose activity_log result too
+$debugLog['activity_log'] = 'swallowed by ActivityLogger';
+
+// TEMP: test a raw insert to see if db writes work at all
+try {
+    $db->query("INSERT INTO activity_logs (action, description) VALUES ('leajlak_debug_test', 'raw test " . time() . "')");
+    $debugLog['raw_insert_test'] = 'OK, id=' . $db->lastInsertId();
+} catch (Exception $e) {
+    $debugLog['raw_insert_test'] = 'FAILED: ' . $e->getMessage();
 }
 
 // ── 13. Respond 200 OK to Leajlak ────────────────────────────
 http_response_code(200);
-echo 'OK v2';
+echo 'DEBUG: ' . json_encode($debugLog);
