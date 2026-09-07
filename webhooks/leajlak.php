@@ -290,4 +290,4 @@ try {
 
 // ── 13. Respond 200 OK to Leajlak ────────────────────────────
 http_response_code(200);
-echo 'OK';
+echo 'OK v2';
