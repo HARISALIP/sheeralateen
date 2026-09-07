@@ -96,7 +96,7 @@ if (!hash_equals($expectedSecret, $authHeader)) {
                 (:topic, :payload, :processed, :error, NOW())
         ")->execute([
             ':topic'     => 'leajlak/order_status',
-            ':payload'   => $rawPayload,
+            ':payload'   => $rawPayload ?: null,
             ':processed' => 0,
             ':error'     => $authFailMsg,
         ]);
@@ -268,8 +268,9 @@ do {
 
 } while (false);
 
-// ── 12. Log every request to webhook_logs ── [TEMP DEBUG] ────
-$debugLog = ['processed' => $processed, 'error_msg' => $errorMessage];
+// ── 12. Log every request to webhook_logs ────────────────────
+// Use $rawPayload ?: null so an empty body (e.g. malformed request)
+// does not violate the JSON_VALID() CHECK constraint on payload.
 try {
     $db->prepare("
         INSERT INTO webhook_logs
@@ -278,26 +279,17 @@ try {
             (:topic, :payload, :processed, :error, NOW())
     ")->execute([
         ':topic'     => 'leajlak/order_status',
-        ':payload'   => $rawPayload,
+        ':payload'   => $rawPayload ?: null,
         ':processed' => $processed,
         ':error'     => $errorMessage,
     ]);
-    $debugLog['webhook_log_insert'] = 'OK, id=' . $db->lastInsertId();
 } catch (PDOException $logEx) {
-    $debugLog['webhook_log_insert'] = 'FAILED: ' . $logEx->getMessage();
-}
-
-// TEMP: expose activity_log result too
-$debugLog['activity_log'] = 'swallowed by ActivityLogger';
-
-// TEMP: test a raw insert to see if db writes work at all
-try {
-    $db->query("INSERT INTO activity_logs (action, description) VALUES ('leajlak_debug_test', 'raw test " . time() . "')");
-    $debugLog['raw_insert_test'] = 'OK, id=' . $db->lastInsertId();
-} catch (Exception $e) {
-    $debugLog['raw_insert_test'] = 'FAILED: ' . $e->getMessage();
+    error_log(
+        'Leajlak webhook: Failed to write to webhook_logs: '
+        . $logEx->getMessage()
+    );
 }
 
 // ── 13. Respond 200 OK to Leajlak ────────────────────────────
 http_response_code(200);
-echo 'DEBUG: ' . json_encode($debugLog);
+echo 'OK';
