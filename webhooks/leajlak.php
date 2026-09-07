@@ -107,26 +107,13 @@ if (!hash_equals($expectedSecret, $authHeader)) {
     exit('Unauthorized');
 }
 
-// ── 4. Return 200 OK immediately ─────────────────────────────
-// Leajlak uses GuzzleHttp and expects a fast acknowledgement.
-// Send 200 now and continue processing asynchronously below.
-if (function_exists('fastcgi_finish_request')) {
-    http_response_code(200);
-    fastcgi_finish_request();
-} else {
-    ob_start();
-    http_response_code(200);
-    echo 'OK';
-    header('Connection: close');
-    header('Content-Length: ' . ob_get_length());
-    ob_end_flush();
-    @ob_flush();
-    flush();
-}
+// ── 4. Process synchronously, respond 200 OK at completion ──
+// fastcgi_finish_request() was removed: the PHP-FPM worker was
+// being recycled before the processing block ran, causing
+// webhook_logs and activity_logs writes to be silently dropped.
+// Leajlak's GuzzleHttp timeout is 30s; our processing completes
+// in under 2s — synchronous execution is safe.
 
-// ====================================================================
-// ASYNC PROCESSING (after 200 OK is already sent to Leajlak)
-// ====================================================================
 
 /**
  * Leajlak status string → local current_status ENUM value.
@@ -300,3 +287,7 @@ try {
         . $logEx->getMessage()
     );
 }
+
+// ── 13. Respond 200 OK to Leajlak ────────────────────────────
+http_response_code(200);
+echo 'OK';
