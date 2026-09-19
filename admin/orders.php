@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * admin/orders.php
  * ---------------------------------------------------------
@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     
     if ($orderId > 0 && in_array($newStatus, $validStatuses) && in_array($newPaymentStatus, $validPaymentStatuses)) {
         // Fetch order to verify and log
-        $stmt = $db->prepare("SELECT order_number, shopify_order_id, current_status, payment_status FROM orders WHERE id = :id");
+        $stmt = $db->prepare("SELECT order_number, shopify_order_id, current_status, payment_status, customer_phone, delivery_address, total_amount FROM orders WHERE id = :id");
         $stmt->execute([':id' => $orderId]);
         $order = $stmt->fetch();
         
@@ -46,6 +46,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     ':new' => $newStatus,
                     ':uid' => (int) $_SESSION['user_id']
                 ]);
+            }
+            
+            // 2.5 Trigger Leajlak Delivery if moved to 'Ready'
+            if ($order['current_status'] !== 'Ready' && $newStatus === 'Ready') {
+                $leajlak = new LeajlakService($db);
+                $leajlakResult = $leajlak->createOrderFromRow($order);
+                if (!$leajlakResult['success']) {
+                    ActivityLogger::log($db, (int) $orderId, null, 'leajlak_order_failed', 'Failed to create Leajlak order: ' . $leajlakResult['error']);
+                } else {
+                    ActivityLogger::log($db, (int) $orderId, null, 'leajlak_order_created', 'Leajlak order created: ' . $leajlakResult['leajlak_order_id']);
+                }
             }
             
             // 3. Enqueue Shopify Sync (Push)
@@ -248,7 +259,7 @@ function statusBadge($s) {
                         <?= $order['branch_name'] ? e($order['branch_name']) : '<span class="text-muted">Unassigned</span>' ?>
                     </td>
                     <td>
-                        <?= get_setting($db, 'currency_symbol', '₹') . ' ' . number_format($order['total_amount'], 2) ?>
+                        <?= get_setting($db, 'currency_symbol', 'â‚¹') . ' ' . number_format($order['total_amount'], 2) ?>
                     </td>
                     <td>
                         <form method="POST" action="orders.php" style="display:inline; margin:0;" class="inline-update-form">
@@ -404,3 +415,4 @@ document.querySelectorAll('.btn-retry').forEach(btn => {
 </script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
+

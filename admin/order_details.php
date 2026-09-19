@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * admin/order_details.php
  * ---------------------------------------------------------
@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $validPaymentStatuses = ['pending', 'paid', 'failed', 'refunded', 'partially_paid', 'partially_refunded', 'unpaid'];
     
     if ($updateOrderId > 0 && in_array($newStatus, $validStatuses) && in_array($newPaymentStatus, $validPaymentStatuses)) {
-        $stmt = $db->prepare("SELECT order_number, shopify_order_id, current_status, payment_status FROM orders WHERE id = :id");
+        $stmt = $db->prepare("SELECT order_number, shopify_order_id, current_status, payment_status, customer_phone, delivery_address, total_amount FROM orders WHERE id = :id");
         $stmt->execute([':id' => $updateOrderId]);
         $orderCheck = $stmt->fetch();
         
@@ -42,6 +42,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     ':new' => $newStatus,
                     ':uid' => (int) $_SESSION['user_id']
                 ]);
+            }
+            
+            // Trigger Leajlak Delivery if moved to 'Ready'
+            if ($orderCheck['current_status'] !== 'Ready' && $newStatus === 'Ready') {
+                $leajlak = new LeajlakService($db);
+                $leajlakResult = $leajlak->createOrderFromRow($orderCheck);
+                if (!$leajlakResult['success']) {
+                    ActivityLogger::log($db, (int) $updateOrderId, null, 'leajlak_order_failed', 'Failed to create Leajlak order: ' . $leajlakResult['error']);
+                } else {
+                    ActivityLogger::log($db, (int) $updateOrderId, null, 'leajlak_order_created', 'Leajlak order created: ' . $leajlakResult['leajlak_order_id']);
+                }
             }
             
             if ($orderCheck['shopify_order_id']) {
@@ -349,3 +360,4 @@ document.getElementById('modal-update-status').addEventListener('click', functio
 </script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
+

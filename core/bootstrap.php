@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * bootstrap.php
  * ---------------------------------------------------------
@@ -29,3 +29,5 @@ require_once __DIR__ . '/helpers.php';
 require_once __DIR__ . '/ShopifyService.php';
 require_once __DIR__ . '/SyncQueue.php';
 require_once __DIR__ . '/ShopifySyncService.php';
+require_once __DIR__ . '/LeajlakService.php';
+
