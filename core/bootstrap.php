@@ -30,4 +30,6 @@ require_once __DIR__ . '/ShopifyService.php';
 require_once __DIR__ . '/SyncQueue.php';
 require_once __DIR__ . '/ShopifySyncService.php';
 require_once __DIR__ . '/LeajlakService.php';
+require_once __DIR__ . '/GeoService.php';
+
 

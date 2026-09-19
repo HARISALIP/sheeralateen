@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * core/ShopifySyncService.php
  * ---------------------------------------------------------
@@ -189,6 +189,24 @@ class ShopifySyncService
                 if ($branchRow) {
                     $assignedBranchId = $branchRow['id'];
                 }
+            }
+        }
+
+
+        // Last-resort fallback: geocode delivery address → find nearest branch
+        // Only runs if neither Shopify location ID nor Pickup_Store_ID resolved a branch.
+        if (!$assignedBranchId && !empty($deliveryAddressPlain)) {
+            try {
+                $addressObj = json_decode($deliveryAddress, true) ?: [];
+                $coords = GeoService::geocodeShopifyAddress($addressObj);
+                if ($coords) {
+                    $nearestId = GeoService::findNearestBranch($this->db, $coords['lat'], $coords['lng']);
+                    if ($nearestId) {
+                        $assignedBranchId = $nearestId;
+                    }
+                }
+            } catch (Exception $e) {
+                // Geocoding is best-effort — never block order import on failure
             }
         }
 
