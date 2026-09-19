@@ -241,6 +241,27 @@ class LeajlakService
             return $this->fail("Order submission returned HTTP {$httpCode}");
         }
 
+        // Check if Leajlak threw a validation error instead of creating the order
+        if (strpos($body, 'invalid-feedback') !== false || strpos($body, 'text-danger') !== false || strpos($body, 'alert-danger') !== false) {
+            $errors = [];
+            if (preg_match_all('/class="invalid-feedback"[^>]*>(.*?)<\/div>/is', $body, $m)) {
+                $errors = array_merge($errors, array_map('strip_tags', $m[1]));
+            }
+            if (preg_match_all('/class="text-danger"[^>]*>(.*?)<\/span>/is', $body, $m)) {
+                $errors = array_merge($errors, array_map('strip_tags', $m[1]));
+            }
+            if (preg_match_all('/class="alert alert-danger"[^>]*>(.*?)<\/div>/is', $body, $m)) {
+                $errors = array_merge($errors, array_map('strip_tags', $m[1]));
+            }
+            
+            // Just in case we didn't catch the exact class
+            if (empty($errors)) {
+                $errors[] = "Unknown validation error found in response HTML.";
+            }
+            
+            return $this->fail("Leajlak Validation Error: " . trim(implode(" | ", $errors)));
+        }
+
         // Try to extract the Leajlak order reference (e.g. "OIm#505") from
         // the response page after the redirect lands on the order list.
         $leajlakOrderId = null;
@@ -314,4 +335,5 @@ class LeajlakService
         return ['success' => false, 'leajlak_order_id' => null, 'error' => $error];
     }
 }
+
 
