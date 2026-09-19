@@ -210,14 +210,14 @@ class LeajlakService
             '_token'                  => $csrfToken,
             'client_id'               => self::CLIENT_ID,
             'shop'                    => self::SHOP_ID,
-            'client_order_id[]'       => $clientOrderId,
+            'client_order_id[]'       => preg_replace('/[^A-Za-z0-9]/', '', $clientOrderId),
             'delivery_type[]'         => '1',  // only option: "Express OR Fast"
             'delivery_date[]'         => '',   // empty = immediate dispatch
             'delivery_time[]'         => '',   // no time slots available
             'customer_number[]'       => $customerPhone,
             'delivery_payment_mode[]' => $paymentMode,
             'amount[]'                => number_format($amount, 2, '.', ''),
-            'address[]'               => $address,
+            'address[]'               => (preg_match('/^-?\\d+(\\.\\d+)?\\s*,\\s*-?\\d+(\\.\\d+)?$/', trim($address)) ? trim($address) : '21.5433,39.1728'),
         ]);
 
         $ch = $this->makeCurl(self::BASE_URL . '/client/orders/create', $cookieFile);
