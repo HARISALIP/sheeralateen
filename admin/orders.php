@@ -53,9 +53,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $leajlak = new LeajlakService($db);
                 $leajlakResult = $leajlak->createOrderFromRow($order);
                 if (!$leajlakResult['success']) {
-                    ActivityLogger::log($db, (int) $orderId, null, 'leajlak_order_failed', 'Failed to create Leajlak order: ' . $leajlakResult['error']);
+                    ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_order_failed', 'Failed to create Leajlak order: ' . $leajlakResult['error'], null, (int) $orderId);
                 } else {
-                    ActivityLogger::log($db, (int) $orderId, null, 'leajlak_order_created', 'Leajlak order created: ' . $leajlakResult['leajlak_order_id']);
+                    ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_order_created', 'Leajlak order created: ' . $leajlakResult['leajlak_order_id'], null, (int) $orderId);
                 }
             }
             
@@ -415,4 +415,5 @@ document.querySelectorAll('.btn-retry').forEach(btn => {
 </script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
+
 
