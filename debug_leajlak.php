@@ -1,4 +1,6 @@
 ﻿<?php
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 require_once __DIR__ . '/core/bootstrap.php';
 require_once __DIR__ . '/core/LeajlakService.php';
 
@@ -61,3 +63,4 @@ class DebugLeajlak extends LeajlakService {
 $db = Database::getConnection();
 $debug = new DebugLeajlak($db);
 $debug->debugOrder();
+
