@@ -73,7 +73,9 @@ class LeajlakService
         string $address,
         float  $amount,
         string $paymentMode = self::PAYMENT_CASH,
-        ?string $shopId = null
+        ?string $shopId = null,
+        ?string $customerName = null,
+        ?string $customerEmail = null
     ): array {
         if (empty($this->email) || empty($this->password)) {
             return $this->fail(
