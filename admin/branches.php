@@ -453,6 +453,10 @@ require_once __DIR__ . '/includes/topbar.php';
                         <label for="add_shopify_location_id">Shopify Location ID</label>
                         <input type="number" name="shopify_location_id" id="add_shopify_location_id" class="form-control" placeholder="e.g. 123456789">
                     </div>
+                    <div class="form-group">
+                        <label for="add_leajlak_shop_id">Leajlak Shop ID</label>
+                        <input type="text" name="leajlak_shop_id" id="add_leajlak_shop_id" class="form-control" placeholder="e.g. 821017856">
+                    </div>
                     <div class="form-group full-width">
                         <label for="add_address">Address</label>
                         <textarea name="address" id="add_address" class="form-control" rows="2"></textarea>
@@ -517,6 +521,10 @@ require_once __DIR__ . '/includes/topbar.php';
                     <div class="form-group">
                         <label for="edit_shopify_location_id">Shopify Location ID</label>
                         <input type="number" name="shopify_location_id" id="edit_shopify_location_id" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_leajlak_shop_id">Leajlak Shop ID</label>
+                        <input type="text" name="leajlak_shop_id" id="edit_leajlak_shop_id" class="form-control">
                     </div>
                     <div class="form-group full-width">
                         <label for="edit_address">Address</label>
