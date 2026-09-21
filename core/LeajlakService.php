@@ -54,11 +54,25 @@ class LeajlakService
             return $this->fail('leajlak_api_token not configured in system_settings');
         }
 
-        // Parse coordinates from address
+        // Format the address if it is JSON from Shopify
+        $formattedAddress = $address;
+        $decoded = json_decode($address, true);
+        if (is_array($decoded)) {
+            $parts = [];
+            if (!empty($decoded['address1'])) $parts[] = $decoded['address1'];
+            if (!empty($decoded['address2'])) $parts[] = $decoded['address2'];
+            if (!empty($decoded['city'])) $parts[] = $decoded['city'];
+            if (!empty($decoded['province'])) $parts[] = $decoded['province'];
+            if (!empty($decoded['zip'])) $parts[] = $decoded['zip'];
+            if (!empty($decoded['country'])) $parts[] = $decoded['country'];
+            $formattedAddress = implode(', ', $parts);
+        }
+
+        // Parse coordinates from address (if it happened to be raw lat,lon)
         $lat = 21.5433;
         $lon = 39.1728;
-        if (preg_match('/^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/', trim($address))) {
-            $parts = explode(',', $address);
+        if (preg_match('/^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/', trim($formattedAddress))) {
+            $parts = explode(',', $formattedAddress);
             $lat = (float)trim($parts[0]);
             $lon = (float)trim($parts[1]);
         }
@@ -73,7 +87,7 @@ class LeajlakService
                     'latitude' => $lat,
                     'longitude' => $lon
                 ],
-                'address' => $address
+                'address' => $formattedAddress
             ],
             'order' => [
                 'payment_type' => (int)$paymentMode,
