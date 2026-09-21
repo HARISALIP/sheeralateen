@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * admin/order_details.php
  * ---------------------------------------------------------
@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $validPaymentStatuses = ['pending', 'paid', 'failed', 'refunded', 'partially_paid', 'partially_refunded', 'unpaid'];
     
     if ($updateOrderId > 0 && in_array($newStatus, $validStatuses) && in_array($newPaymentStatus, $validPaymentStatuses)) {
-        $stmt = $db->prepare("SELECT order_number, shopify_order_id, current_status, payment_status, customer_phone, delivery_address, total_amount FROM orders WHERE id = :id");
+        $stmt = $db->prepare("SELECT o.order_number, o.shopify_order_id, o.current_status, o.payment_status, o.customer_phone, o.delivery_address, o.total_amount, b.leajlak_shop_id FROM orders o LEFT JOIN branches b ON o.assigned_branch_id = b.id WHERE o.id = :id");
         $stmt->execute([':id' => $updateOrderId]);
         $orderCheck = $stmt->fetch();
         

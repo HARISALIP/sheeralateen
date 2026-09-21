@@ -33,6 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $branchName  = trim($_POST['branch_name'] ?? '');
         $branchCode  = strtoupper(trim($_POST['branch_code'] ?? ''));
         $shopifyLocId = !empty($_POST['shopify_location_id']) ? (int)$_POST['shopify_location_id'] : null;
+        $leajlakShopId = trim($_POST['leajlak_shop_id'] ?? '');
         $address     = trim($_POST['address'] ?? '');
         $phone       = trim($_POST['phone'] ?? '');
         $email       = trim($_POST['email'] ?? '');
@@ -49,14 +50,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $stmt = $db->prepare("
                     INSERT INTO branches
-                        (branch_name, branch_code, shopify_location_id, address, phone, email, branch_manager_id, status)
+                        (branch_name, branch_code, shopify_location_id, leajlak_shop_id, address, phone, email, branch_manager_id, status)
                     VALUES
-                        (:name, :code, :shopify_loc, :addr, :phone, :email, :mgr, :status)
+                        (:name, :code, :shopify_loc, :leajlak_shop, :addr, :phone, :email, :mgr, :status)
                 ");
                 $stmt->execute([
                     ':name'   => $branchName,
                     ':code'   => $branchCode,
                     ':shopify_loc' => $shopifyLocId,
+                    ':leajlak_shop' => $leajlakShopId ?: null,
                     ':addr'   => $address ?: null,
                     ':phone'  => $phone   ?: null,
                     ':email'  => $email   ?: null,
@@ -91,6 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     SET branch_name = :name,
                         branch_code = :code,
                         shopify_location_id = :shopify_loc,
+                        leajlak_shop_id = :leajlak_shop,
                         address     = :addr,
                         phone       = :phone,
                         email       = :email,
@@ -102,6 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ':name'   => $branchName,
                     ':code'   => $branchCode,
                     ':shopify_loc' => $shopifyLocId,
+                    ':leajlak_shop' => $leajlakShopId ?: null,
                     ':addr'   => $address ?: null,
                     ':phone'  => $phone   ?: null,
                     ':email'  => $email   ?: null,
@@ -615,6 +619,7 @@ function editBranch(data) {
     document.getElementById('edit_branch_name').value  = data.branch_name;
     document.getElementById('edit_branch_code').value  = data.branch_code;
     document.getElementById('edit_shopify_location_id').value = data.shopify_location_id || '';
+    document.getElementById('edit_leajlak_shop_id').value = data.leajlak_shop_id || '';
     document.getElementById('edit_address').value      = data.address || '';
     document.getElementById('edit_phone').value        = data.phone   || '';
     document.getElementById('edit_email').value        = data.email   || '';

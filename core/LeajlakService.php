@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * LeajlakService.php
  * ---------------------------------------------------------
@@ -72,7 +72,8 @@ class LeajlakService
         string $customerPhone,
         string $address,
         float  $amount,
-        string $paymentMode = self::PAYMENT_CASH
+        string $paymentMode = self::PAYMENT_CASH,
+        ?string $shopId = null
     ): array {
         if (empty($this->email) || empty($this->password)) {
             return $this->fail(
@@ -129,7 +130,8 @@ class LeajlakService
             $order['customer_phone']   ?? '',
             $order['delivery_address'] ?? '',
             (float) ($order['total_amount'] ?? 0),
-            $paymentMode
+            $paymentMode,
+            $order['leajlak_shop_id'] ?? null
         );
     }
 
@@ -203,13 +205,14 @@ class LeajlakService
         string $customerPhone,
         string $address,
         float  $amount,
-        string $paymentMode
+        string $paymentMode,
+        ?string $shopId = null
     ): array {
         // [] in field names is how Laravel receives array inputs.
         $fields = http_build_query([
             '_token'                  => $csrfToken,
             'client_id'               => self::CLIENT_ID,
-            'shop'                    => self::SHOP_ID,
+            'shop'                    => $shopId ?: self::SHOP_ID,
             'client_order_id[]'       => preg_replace('/[^A-Za-z0-9]/', '', $clientOrderId),
             'delivery_type[]'         => '1',  // only option: "Express OR Fast"
             'delivery_date[]'         => '',   // empty = immediate dispatch
