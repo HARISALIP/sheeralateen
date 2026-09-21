@@ -38,9 +38,9 @@ class LeajlakService
     const SHOP_ID   = '821017856';
 
     // Values from Leajlak delivery_payment_mode <select>
-    const PAYMENT_PREPAID         = 'Pre Paid';
-    const PAYMENT_CASH            = 'Auto';            // shown as "Cash" in UI
-    const PAYMENT_SWIPING_MACHINE = 'Swiping Machine';
+    const PAYMENT_PREPAID         = '0';
+    const PAYMENT_CASH            = '1';            // shown as "Cash" in UI
+    const PAYMENT_SWIPING_MACHINE = '2';
 
     private PDO    $db;
     private string $email;
