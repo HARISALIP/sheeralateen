@@ -160,9 +160,9 @@ do {
     $leajlakStatus  = (string) $payload['status'];
     $dspOrderId     = isset($payload['dsp_order_id']) ? (int) $payload['dsp_order_id'] : null;
     
-    // Extract Captain details (assuming keys are captain_name and captain_phone)
-    $captainName    = isset($payload['captain_name']) ? (string) $payload['captain_name'] : null;
-    $captainPhone   = isset($payload['captain_phone']) ? (string) $payload['captain_phone'] : null;
+    // Extract Captain details (from Leajlak docs: driver.name and driver.phone)
+    $captainName    = isset($payload['driver']['name']) ? (string) $payload['driver']['name'] : null;
+    $captainPhone   = isset($payload['driver']['phone']) ? (string) $payload['driver']['phone'] : null;
 
     // ── 6. Resolve local status ──────────────────────────────
     if (!array_key_exists($leajlakStatus, $statusMap)) {
