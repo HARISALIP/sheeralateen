@@ -657,24 +657,24 @@ if (searchInput) {
             } else {
                 url.searchParams.set('q', query);
             }
-            url.searchParams.set('page', 1); // Reset to page 1 on new search
+            url.searchParams.set('page', 1);
             
-            // Update URL without reload
             window.history.pushState({}, '', url);
 
-            // Add loading state
-            const tbody = document.querySelector('table tbody');
-            if (tbody) tbody.style.opacity = '0.5';
+            const tableContainer = document.querySelector('.table-responsive');
+            if (tableContainer) tableContainer.style.opacity = '0.5';
 
-            fetch(url)
+            fetch(url, { credentials: 'same-origin' })
                 .then(res => res.text())
                 .then(html => {
+                    if (tableContainer) tableContainer.style.opacity = '1';
+                    
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(html, 'text/html');
                     
-                    const newTable = doc.querySelector('table');
-                    if (newTable) {
-                        document.querySelector('table').innerHTML = newTable.innerHTML;
+                    const newTableContainer = doc.querySelector('.table-responsive');
+                    if (newTableContainer && tableContainer) {
+                        tableContainer.innerHTML = newTableContainer.innerHTML;
                     }
                     
                     const currentPagination = document.querySelector('.pagination-wrapper');
@@ -684,36 +684,17 @@ if (searchInput) {
                         currentPagination.innerHTML = newPagination.innerHTML;
                     } else if (currentPagination && !newPagination) {
                         currentPagination.remove();
-                    } else if (!currentPagination && newPagination) {
-                        document.querySelector('table').parentElement.appendChild(newPagination);
+                    } else if (!currentPagination && newPagination && tableContainer) {
+                        tableContainer.parentElement.appendChild(newPagination);
                     }
                 })
                 .catch(err => {
                     console.error('Search failed:', err);
-                    if (tbody) tbody.style.opacity = '1';
+                    if (tableContainer) tableContainer.style.opacity = '1';
                 });
-        }, 400); // 400ms debounce
+        }, 300);
     });
 }
-
-// Client-side password match hint
-document.getElementById('reset-password-form')?.addEventListener('submit', function(e) {
-    const pw  = document.getElementById('new_password').value;
-    const cpw = document.getElementById('confirm_password').value;
-    if (pw !== cpw) {
-        e.preventDefault();
-        alert('Passwords do not match. Please check and try again.');
-    }
-});
-
-setTimeout(() => {
-    ['flash-success','flash-error'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) { el.style.transition = 'opacity 0.5s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 500); }
-    });
-}, 5000);
 </script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
-
-
