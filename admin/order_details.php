@@ -374,7 +374,7 @@ function statusBadge($s) {
                 <p>New order is placed</p>
             </div>
             <div class="step <?= $currentStep >= 2 ? ($currentStep == 2 ? 'current' : 'completed') : '' ?>">
-                <div class="step-icon"><i class="fa-solid fa-check-double"></i></div>
+                <div class="step-icon"><i class="fa-solid fa-check"></i></div>
                 <h4>Order Accept</h4>
                 <p>Your order has been accepted</p>
             </div>
