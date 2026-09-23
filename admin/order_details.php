@@ -360,7 +360,7 @@ function statusBadge($s) {
                 'delivered' => 5
             ];
             if (!empty($order['leajlak_status'])) {
-                $currentStep = $statusMap[$order['leajlak_status']] ?? 1;
+                $currentStep = $statusMap[strtolower($order['leajlak_status'])] ?? 1;
             } else {
                 $fallback = ['New'=>0, 'Assigned'=>0, 'Accepted'=>0, 'Preparing'=>0, 'Ready'=>1, 'Out For Delivery'=>4, 'Delivered'=>5];
                 $currentStep = $fallback[$order['current_status']] ?? 0;
