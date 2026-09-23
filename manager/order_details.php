@@ -11,7 +11,7 @@ $db = Database::getConnection();
 $branchId = (int) $_SESSION['branch_id'];
 
 if (!$branchId) {
-    die("Error: No branch assigned to this manager.");
+    die('<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>Access Denied</title><style>body{font-family:system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f5f7fa;text-align:center;} .box{background:#fff;padding:40px;border-radius:12px;box-shadow:0 10px 25px rgba(0,0,0,0.05);max-width:400px;width:90%;} h2{margin-top:0;color:#1e293b;} p{color:#475569;margin-bottom:24px;line-height:1.5;} .btn{display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;padding:12px 24px;border-radius:6px;font-weight:600;transition:0.2s;} .btn:hover{background:#4338ca;}</style></head><body><div class="box"><h2>Access Denied</h2><p>Error: No branch has been assigned to your manager account yet.<br><br>Please contact the Super Admin to assign you to a branch.</p><a href="logout.php" class="btn">Log Out & Return</a></div></body></html>');
 }
 
 // --- POST HANDLER: Update Order Status ---
@@ -480,6 +480,7 @@ document.getElementById('modal-update-status').addEventListener('click', functio
 </script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
+
 
 
 
