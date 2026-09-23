@@ -159,6 +159,10 @@ do {
     $shopifyOrderId = (string) $payload['id'];
     $leajlakStatus  = (string) $payload['status'];
     $dspOrderId     = isset($payload['dsp_order_id']) ? (int) $payload['dsp_order_id'] : null;
+    
+    // Extract Captain details (assuming keys are captain_name and captain_phone)
+    $captainName    = isset($payload['captain_name']) ? (string) $payload['captain_name'] : null;
+    $captainPhone   = isset($payload['captain_phone']) ? (string) $payload['captain_phone'] : null;
 
     // ── 6. Resolve local status ──────────────────────────────
     if (!array_key_exists($leajlakStatus, $statusMap)) {
@@ -212,6 +216,8 @@ do {
     $db->prepare("
         UPDATE orders
         SET    current_status = :status,
+               leajlak_captain_name = COALESCE(:cname, leajlak_captain_name),
+               leajlak_captain_phone = COALESCE(:cphone, leajlak_captain_phone),
                updated_at     = NOW()
         WHERE  id = :id
     ")->execute([
