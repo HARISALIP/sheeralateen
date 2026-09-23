@@ -213,17 +213,14 @@ do {
     }
 
     // ── 8. Update local order status ─────────────────────────
-    $db->prepare("
-        UPDATE orders
-        SET    current_status = :status,
-               leajlak_captain_name = COALESCE(:cname, leajlak_captain_name),
-               leajlak_captain_phone = COALESCE(:cphone, leajlak_captain_phone),
-               updated_at     = NOW()
-        WHERE  id = :id
-    ")->execute([
-        ':status' => $newLocalStatus,
-        ':id'     => $localOrderId,
-    ]);
+    $finalStatusUpdate = '';
+    if (in_array($newLocalStatus, ['Out For Delivery', 'Delivered', 'Cancelled', 'Returned'])) {
+        $finalStatusUpdate = "current_status = :status,";
+    }
+    $stmtStr = "UPDATE orders SET $finalStatusUpdate leajlak_status = :lstatus, leajlak_captain_name = COALESCE(:cname, leajlak_captain_name), leajlak_captain_phone = COALESCE(:cphone, leajlak_captain_phone), updated_at = NOW() WHERE id = :id";
+    $params = [':lstatus' => $leajlakStatus, ':cname' => $captainName, ':cphone' => $captainPhone, ':id' => $localOrderId];
+    if ($finalStatusUpdate) { $params[':status'] = $newLocalStatus; }
+    $db->prepare($stmtStr)->execute($params);
 
     // ── 9. Write status history (changed_by = NULL = system) ─
     $db->prepare("
