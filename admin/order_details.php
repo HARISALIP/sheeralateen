@@ -201,15 +201,11 @@ function statusBadge($s) {
                 <span class="status <?= $pClass ?>"><?= ucfirst($order['payment_status']) ?></span>
             </div>
             
-            <div style="display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center;">
-                <strong>Shopify Sync:</strong>
-                <?php if ($order['sync_status'] === 'synced'): ?>
-                    <span class="status completed"><i class="fa-solid fa-cloud-check"></i> Synced</span>
-                <?php elseif ($order['sync_status'] === 'waiting'): ?>
-                    <span class="status processing"><i class="fa-solid fa-cloud-arrow-up"></i> Waiting</span>
-                <?php else: ?>
-                    <span class="status inactive">Failed</span>
-                <?php endif; ?>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center;">
+                <strong>Captain Name:</strong>
+                <span style="font-weight: 500; color: var(--text-color);">
+                    <?= !empty($order['leajlak_captain_name']) ? e($order['leajlak_captain_name']) : '<span class="text-muted">Not assigned</span>' ?>
+                </span>
             </div>
 
             <?php if ($order['shopify_order_number']): ?>
