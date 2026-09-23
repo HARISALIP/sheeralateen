@@ -658,8 +658,63 @@ setTimeout(() => {
     });
 }, 5000);
 
+
+// Live search for branches table
+const searchInput = document.getElementById('search-input');
+if (searchInput) {
+    let debounceTimer;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        const query = this.value;
+        
+        debounceTimer = setTimeout(() => {
+            const url = new URL(window.location.href);
+            if (query.trim() === '') {
+                url.searchParams.delete('q');
+            } else {
+                url.searchParams.set('q', query);
+            }
+            url.searchParams.set('page', 1); // Reset to page 1 on new search
+            
+            // Update URL without reload
+            window.history.pushState({}, '', url);
+
+            // Add loading state
+            const tbody = document.querySelector('table tbody');
+            if (tbody) tbody.style.opacity = '0.5';
+
+            fetch(url)
+                .then(res => res.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    
+                    const newTable = doc.querySelector('table');
+                    if (newTable) {
+                        document.querySelector('table').innerHTML = newTable.innerHTML;
+                    }
+                    
+                    const currentPagination = document.querySelector('.pagination-wrapper');
+                    const newPagination = doc.querySelector('.pagination-wrapper');
+                    
+                    if (currentPagination && newPagination) {
+                        currentPagination.innerHTML = newPagination.innerHTML;
+                    } else if (currentPagination && !newPagination) {
+                        currentPagination.remove();
+                    } else if (!currentPagination && newPagination) {
+                        document.querySelector('table').parentElement.appendChild(newPagination);
+                    }
+                })
+                .catch(err => {
+                    console.error('Search failed:', err);
+                    if (tbody) tbody.style.opacity = '1';
+                });
+        }, 400); // 400ms debounce
+    });
+}
 </script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
+
 
 
