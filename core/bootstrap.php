@@ -1,4 +1,7 @@
-﻿<?php
+<?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 /**
  * bootstrap.php
  * ---------------------------------------------------------
@@ -31,5 +34,6 @@ require_once __DIR__ . '/SyncQueue.php';
 require_once __DIR__ . '/ShopifySyncService.php';
 require_once __DIR__ . '/LeajlakService.php';
 require_once __DIR__ . '/GeoService.php';
+
 
 
