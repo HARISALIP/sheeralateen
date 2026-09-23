@@ -268,13 +268,9 @@ function statusBadge($s) {
                             <input type="hidden" name="order_id" value="<?= $order['id'] ?>">
                             <input type="hidden" name="new_status" value="<?= e($order['current_status']) ?>">
                             <select name="new_payment_status" class="form-control" onchange="this.form.submit()" style="min-width: 110px; padding: 4px 8px; font-size: 13px; height: auto;">
-                                <option value="pending" <?= $order['payment_status'] === 'pending' ? 'selected' : '' ?>>Pending</option>
-                                <option value="paid" <?= $order['payment_status'] === 'paid' ? 'selected' : '' ?>>Paid</option>
-                                <option value="failed" <?= $order['payment_status'] === 'failed' ? 'selected' : '' ?>>Failed</option>
-                                <option value="refunded" <?= $order['payment_status'] === 'refunded' ? 'selected' : '' ?>>Refunded</option>
-                                <option value="partially_paid" <?= $order['payment_status'] === 'partially_paid' ? 'selected' : '' ?>>Partially Paid</option>
-                                <option value="partially_refunded" <?= $order['payment_status'] === 'partially_refunded' ? 'selected' : '' ?>>Partially Refunded</option>
-                                <option value="unpaid" <?= $order['payment_status'] === 'unpaid' ? 'selected' : '' ?>>Unpaid</option>
+                                <?php foreach(array_unique(array_merge(["pending", "paid"], [$order["payment_status"]])) as $ps): ?>
+                                    <option value="<?= $ps ?>" <?= $order["payment_status"] === $ps ? "selected" : "" ?>><?= ucfirst(str_replace("_", " ", $ps)) ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </form>
                     </td>
@@ -415,6 +411,7 @@ document.querySelectorAll('.btn-retry').forEach(btn => {
 </script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
+
 
 
 
