@@ -183,7 +183,7 @@ do {
     $stmt = $db->prepare("
         SELECT id, order_number, current_status, shopify_order_id
         FROM   orders
-        WHERE  shopify_order_id = :sid
+        WHERE  (shopify_order_id = :sid OR order_number = :sid OR order_number = CONCAT('#', :sid))
           AND  deleted_at IS NULL
         LIMIT  1
     ");
