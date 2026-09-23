@@ -395,15 +395,7 @@ function statusBadge($s) {
             </div>
         </div>
 
-        <?php if (!empty($order['leajlak_captain_name'])): ?>
-        <div class="captain-card">
-            <div class="captain-avatar"><i class="fa-solid fa-user-helmet-safety"></i></div>
-            <div class="captain-info">
-                <h4>Delivery Captain</h4>
-                <p><strong>Name:</strong> <?= e($order['leajlak_captain_name']) ?> &nbsp;|&nbsp; <strong>Contact:</strong> <?= e($order['leajlak_captain_phone'] ?: 'N/A') ?></p>
-            </div>
-        </div>
-        <?php endif; ?>
+
     </div>
 </div>
 
