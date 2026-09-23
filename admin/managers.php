@@ -698,3 +698,4 @@ if (searchInput) {
 </script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
+
