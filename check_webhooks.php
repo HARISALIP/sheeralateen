@@ -2,7 +2,7 @@
 require_once __DIR__ . '/core/bootstrap.php';
 $db = Database::getConnection();
 
-$stmt = $db->query("SELECT * FROM webhook_logs ORDER BY id DESC LIMIT 10");
+$stmt = $db->query("SELECT * FROM webhook_logs WHERE topic = 'leajlak/order_status' ORDER BY id DESC LIMIT 50");
 $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 echo "<pre>";
