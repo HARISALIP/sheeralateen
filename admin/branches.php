@@ -657,7 +657,9 @@ setTimeout(() => {
             setTimeout(() => el.remove(), 500);
     });
 }, 5000);
+
 </script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
+
 
