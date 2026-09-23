@@ -187,7 +187,7 @@ function statusBadge($s) {
                 <label for="status">Order Status</label>
                 <select name="status" id="status" class="form-control">
                     <option value="">All Statuses</option>
-                    <?php foreach(['New','Assigned','Accepted','Preparing','Ready','Out For Delivery','Delivered','Cancelled','Returned'] as $st): ?>
+                    <?php foreach(array_unique(array_merge(['New','Ready','Out For Delivery','Cancelled'], [$order['current_status']])) as $st): ?>
                         <option value="<?= $st ?>" <?= $filterStatus === $st ? 'selected' : '' ?>><?= $st ?></option>
                     <?php endforeach; ?>
                 </select>
@@ -270,7 +270,7 @@ function statusBadge($s) {
                             <input type="hidden" name="order_id" value="<?= $order['id'] ?>">
                             <input type="hidden" name="new_payment_status" value="<?= e($order['payment_status']) ?>">
                             <select name="new_status" class="form-control" onchange="this.form.submit()" style="min-width: 140px; padding: 4px 8px; font-size: 13px; height: auto;">
-                                <?php foreach(['New','Assigned','Accepted','Preparing','Ready','Out For Delivery','Delivered','Cancelled','Returned'] as $st): ?>
+                                <?php foreach(array_unique(array_merge(['New','Ready','Out For Delivery','Cancelled'], [$order['current_status']])) as $st): ?>
                                     <option value="<?= $st ?>" <?= $order['current_status'] === $st ? 'selected' : '' ?>><?= $st ?></option>
                                 <?php endforeach; ?>
                             </select>
@@ -400,6 +400,7 @@ document.querySelectorAll('.btn-retry').forEach(btn => {
 </script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
+
 
 
 
