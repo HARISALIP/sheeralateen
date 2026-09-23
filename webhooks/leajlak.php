@@ -201,7 +201,7 @@ do {
     $currentStatus = (string) $order['current_status'];
 
     // ── Idempotency guard — skip if already at target status ─
-    if ($currentStatus === $newLocalStatus) {
+    if (false && $currentStatus === $newLocalStatus) { // Disabled so we capture leajlak_status
         $processed = 1;
         ActivityLogger::log(
             null,
