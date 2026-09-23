@@ -238,6 +238,175 @@ function statusBadge($s) {
 
 </div>
 
+<!-- Leajlak Tracking Progress UI -->
+<style>
+.tracking-container {
+    padding: 30px 15px;
+    background: #fff;
+    border-radius: 8px;
+}
+.tracking-header {
+    margin-bottom: 30px;
+}
+.tracking-header h3 {
+    margin: 0;
+    color: #637286;
+    font-size: 1.5rem;
+    font-weight: 500;
+}
+.tracking-header p {
+    margin: 5px 0 0;
+    color: #8c98a4;
+    font-size: 0.9rem;
+}
+.progress-track {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    position: relative;
+    padding-top: 20px;
+    margin-bottom: 20px;
+}
+.progress-track::before {
+    content: '';
+    position: absolute;
+    top: 40px;
+    left: 40px;
+    right: 40px;
+    height: 2px;
+    background: #e2e8f0;
+    z-index: 0;
+}
+.step {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    width: 20%;
+}
+.step-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 15px;
+    color: #a0aec0;
+    font-size: 1.1rem;
+    transition: all 0.3s;
+}
+.step.active .step-icon, .step.completed .step-icon {
+    background: #10b981;
+    border-color: #10b981;
+    color: #fff;
+}
+.step.current .step-icon {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: #fff;
+}
+.step h4 {
+    margin: 0 0 5px;
+    font-size: 0.9rem;
+    color: #4a5568;
+    font-weight: 600;
+}
+.step p {
+    margin: 0;
+    font-size: 0.8rem;
+    color: #a0aec0;
+}
+.step.active h4, .step.current h4 {
+    color: #1a202c;
+}
+.step.current h4 {
+    color: #3b82f6;
+}
+.captain-card {
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 8px;
+    padding: 15px;
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+.captain-avatar {
+    width: 50px;
+    height: 50px;
+    background: #e2e8f0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+    font-size: 1.5rem;
+}
+.captain-info h4 { margin: 0 0 4px; font-size: 1rem; color: #1e293b; }
+.captain-info p { margin: 0; font-size: 0.85rem; color: #64748b; }
+</style>
+
+<div class="card" style="margin-top: 24px;">
+    <div class="card-body tracking-container">
+        <div class="tracking-header">
+            <h3>Order Tracking</h3>
+            <p>Follow your order journey in real-time</p>
+        </div>
+        
+        <?php
+            $statusMap = [
+                'New' => 1, 'Assigned' => 1,
+                'Accepted' => 2,
+                'Preparing' => 3, 'Ready' => 3,
+                'Out For Delivery' => 4,
+                'Delivered' => 5
+            ];
+            $currentStep = $statusMap[$order['current_status']] ?? 1;
+        ?>
+
+        <div class="progress-track">
+            <div class="step <?= $currentStep >= 1 ? ($currentStep == 1 ? 'current' : 'completed') : '' ?>">
+                <div class="step-icon"><i class="fa-solid fa-check"></i></div>
+                <h4>New Order</h4>
+                <p>New order is placed</p>
+            </div>
+            <div class="step <?= $currentStep >= 2 ? ($currentStep == 2 ? 'current' : 'completed') : '' ?>">
+                <div class="step-icon"><i class="fa-solid fa-check-double"></i></div>
+                <h4>Order Accept</h4>
+                <p>Your order has been accepted</p>
+            </div>
+            <div class="step <?= $currentStep >= 3 ? ($currentStep == 3 ? 'current' : 'completed') : '' ?>">
+                <div class="step-icon"><i class="fa-solid fa-motorcycle"></i></div>
+                <h4>Order Picked</h4>
+                <p>Order picked up from shop</p>
+            </div>
+            <div class="step <?= $currentStep >= 4 ? ($currentStep == 4 ? 'current' : 'completed') : '' ?>">
+                <div class="step-icon"><i class="fa-solid fa-truck-fast"></i></div>
+                <h4>Shipped</h4>
+                <p>Order is on the way to you</p>
+            </div>
+            <div class="step <?= $currentStep >= 5 ? ($currentStep == 5 ? 'current' : 'completed') : '' ?>">
+                <div class="step-icon"><i class="fa-solid fa-box-check"></i></div>
+                <h4>Delivered</h4>
+                <p>Order successfully delivered</p>
+            </div>
+        </div>
+
+        <?php if (!empty($order['leajlak_captain_name'])): ?>
+        <div class="captain-card">
+            <div class="captain-avatar"><i class="fa-solid fa-user-helmet-safety"></i></div>
+            <div class="captain-info">
+                <h4>Delivery Captain</h4>
+                <p><strong>Name:</strong> <?= e($order['leajlak_captain_name']) ?> &nbsp;|&nbsp; <strong>Contact:</strong> <?= e($order['leajlak_captain_phone'] ?: 'N/A') ?></p>
+            </div>
+        </div>
+        <?php endif; ?>
+    </div>
+</div>
+
 <!-- Order Items -->
 <div class="card" style="margin-top: 24px;">
     <div class="card-header">
