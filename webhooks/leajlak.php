@@ -62,7 +62,7 @@ try {
         $newLocalStatus = $leajlakStatusMap[strtolower($leajlakStatus)];
 
         $stmt = $db->prepare("SELECT id, order_number, current_status FROM orders WHERE (shopify_order_id = :sid OR order_number = :sid_on OR order_number LIKE CONCAT('%', :sid_like, '%')) AND deleted_at IS NULL LIMIT 1");
-        $stmt->execute([":sid" => $shopifyOrderId, ":sid_on" => $shopifyOrderId, ":sid_like" => $shopifyOrderId]);
+        $stmt->execute([":sid" => $shopifyOrderId, ":sid_on" => $shopifyOrderId, ":sid_like" => "%" . $shopifyOrderId . "%"]);
         $order = $stmt->fetch();
 
         if (!$order) {
@@ -117,6 +117,7 @@ try {
 
 http_response_code(200);
 echo "OK";
+
 
 
 
