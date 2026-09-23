@@ -165,7 +165,11 @@ do {
     $captainPhone   = isset($payload['driver']['phone']) ? (string) $payload['driver']['phone'] : null;
 
     // ── 6. Resolve local status ──────────────────────────────
-    if (!array_key_exists($leajlakStatus, $statusMap)) {
+    // Make keys case-insensitive
+    $leajlakStatusMap = [];
+    foreach ($statusMap as $k => $v) { $leajlakStatusMap[strtolower($k)] = $v; }
+    
+    if (!array_key_exists(strtolower($leajlakStatus), $leajlakStatusMap)) {
         // Informational status with no local transition — not an error.
         $processed = 1;
         ActivityLogger::log(
@@ -177,7 +181,7 @@ do {
         break;
     }
 
-    $newLocalStatus = $statusMap[$leajlakStatus];
+    $newLocalStatus = $leajlakStatusMap[strtolower($leajlakStatus)];
 
     // ── 7. Find the local order by Shopify order ID ─────────
     $stmt = $db->prepare("
