@@ -400,3 +400,6 @@ document.querySelectorAll('.btn-retry').forEach(btn => {
 </script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
+
+
+

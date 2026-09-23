@@ -459,26 +459,19 @@ function statusBadge($s) {
                 <div class="form-group">
                     <label for="new_status">Order Status</label>
                     <select name="new_status" id="new_status" class="form-control" required>
-                        <option value="New">New</option>
-                        <option value="Assigned">Assigned</option>
-                        <option value="Accepted">Accepted</option>
-                        <option value="Preparing">Preparing</option>
-                        <option value="Ready">Ready</option>
-                        <option value="Out For Delivery">Out For Delivery</option>
-                        <option value="Delivered">Delivered</option>
-                        <option value="Cancelled">Cancelled</option>
-                        <option value="Returned">Returned</option>
-                    </select>
+                          <?php foreach(array_unique(array_merge(["New","Ready","Out For Delivery","Cancelled"], [$order["current_status"]])) as $st): ?>
+                              <option value="<?= $st ?>"><?= $st ?></option>
+                          <?php endforeach; ?>
+                      </select>
                 </div>
                 
                 <div class="form-group" style="margin-top:16px;">
                     <label for="new_payment_status">Payment Status</label>
                     <select name="new_payment_status" id="new_payment_status" class="form-control" required>
-                        <option value="pending">Pending</option>
-                        <option value="paid">Paid</option>
-                        <option value="failed">Failed</option>
-                        <option value="refunded">Refunded</option>
-                    </select>
+                          <?php foreach(array_unique(array_merge(["pending", "paid"], [$order["payment_status"]])) as $ps): ?>
+                              <option value="<?= $ps ?>"><?= ucfirst(str_replace("_", " ", $ps)) ?></option>
+                          <?php endforeach; ?>
+                      </select>
                 </div>
             </div>
             
@@ -521,6 +514,7 @@ document.getElementById('modal-update-status').addEventListener('click', functio
 </script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
+
 
 
 
