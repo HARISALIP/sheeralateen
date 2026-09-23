@@ -354,10 +354,10 @@ function statusBadge($s) {
         
         <?php
             $statusMap = [
-                'Order Accept' => 2, 'Start Ride' => 2,
-                'Reached shop' => 3, 'Order Picked' => 3,
-                'Shipped' => 4, 'Reached Destination' => 4, 'Re Route' => 4,
-                'Delivered' => 5
+                'order accept' => 2, 'start ride' => 2,
+                'reached shop' => 3, 'order picked' => 3,
+                'shipped' => 4, 'reached destination' => 4, 're route' => 4,
+                'delivered' => 5
             ];
             if (!empty($order['leajlak_status'])) {
                 $currentStep = $statusMap[$order['leajlak_status']] ?? 1;
