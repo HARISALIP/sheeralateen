@@ -485,6 +485,14 @@ require_once __DIR__ . '/includes/topbar.php';
                         <textarea name="address" id="add_address" class="form-control" rows="2"></textarea>
                     </div>
                     <div class="form-group">
+                        <label for="add_latitude">Latitude</label>
+                        <input type="text" name="latitude" id="add_latitude" class="form-control" placeholder="e.g. 21.5433">
+                    </div>
+                    <div class="form-group">
+                        <label for="add_longitude">Longitude</label>
+                        <input type="text" name="longitude" id="add_longitude" class="form-control" placeholder="e.g. 39.1728">
+                    </div>
+                    <div class="form-group">
                         <label for="add_phone">Phone</label>
                         <input type="text" name="phone" id="add_phone" class="form-control">
                     </div>
@@ -552,6 +560,14 @@ require_once __DIR__ . '/includes/topbar.php';
                     <div class="form-group full-width">
                         <label for="edit_address">Address</label>
                         <textarea name="address" id="edit_address" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_latitude">Latitude</label>
+                        <input type="text" name="latitude" id="edit_latitude" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit_longitude">Longitude</label>
+                        <input type="text" name="longitude" id="edit_longitude" class="form-control">
                     </div>
                     <div class="form-group">
                         <label for="edit_phone">Phone</label>
@@ -652,6 +668,8 @@ function editBranch(data) {
     document.getElementById('edit_shopify_location_id').value = data.shopify_location_id || '';
     document.getElementById('edit_leajlak_shop_id').value = data.leajlak_shop_id || '';
     document.getElementById('edit_address').value      = data.address || '';
+    document.getElementById('edit_latitude').value     = data.latitude || '';
+    document.getElementById('edit_longitude').value    = data.longitude || '';
     document.getElementById('edit_phone').value        = data.phone   || '';
     document.getElementById('edit_email').value        = data.email   || '';
     document.getElementById('edit_status').value       = data.status;
@@ -738,6 +756,7 @@ if (searchInput) {
 </script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
+
 
 
 
