@@ -46,6 +46,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
+
+        // --- Auto-Create Shop in Leajlak if no ID provided ---
+        if (empty($leajlakShopId)) {
+            $leajlakSvc = new LeajlakService($db);
+            $res = $leajlakSvc->createShop(
+                $branchName, 
+                $address ?: 'Jeddah, SA', 
+                'Branch Manager', 
+                $phone ?: '96600000000', 
+                $email ?: 'shop@sheeralateen.com'
+            );
+            
+            if ($res['success'] && !empty($res['shop_id'])) {
+                $leajlakShopId = $res['shop_id'];
+                flash('success', "Leajlak Shop automatically created with ID: {$leajlakShopId}");
+            } else {
+                // We won't block the branch creation, just show a warning.
+                flash('warning', "Branch created, but failed to auto-create Leajlak Shop: " . ($res['error'] ?? 'Unknown Error'));
+            }
+        }
+        
         if ($action === 'add') {
             try {
                 $stmt = $db->prepare("
@@ -715,4 +736,5 @@ if (searchInput) {
 </script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
+
 
