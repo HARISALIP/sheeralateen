@@ -472,7 +472,7 @@ require_once __DIR__ . '/includes/topbar.php';
                         <label for="add_branch_code">Branch Code <span class="required">*</span></label>
                         <input type="text" name="branch_code" id="add_branch_code" class="form-control" required placeholder="e.g. MAIN01" style="text-transform:uppercase;">
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" style="display: none;">
                         <label for="add_shopify_location_id">Shopify Location ID</label>
                         <input type="number" name="shopify_location_id" id="add_shopify_location_id" class="form-control" placeholder="e.g. 123456789">
                     </div>
@@ -549,7 +549,7 @@ require_once __DIR__ . '/includes/topbar.php';
                         <label for="edit_branch_code">Branch Code <span class="required">*</span></label>
                         <input type="text" name="branch_code" id="edit_branch_code" class="form-control" required style="text-transform:uppercase;">
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" style="display: none;">
                         <label for="edit_shopify_location_id">Shopify Location ID</label>
                         <input type="number" name="shopify_location_id" id="edit_shopify_location_id" class="form-control">
                     </div>
@@ -756,6 +756,7 @@ if (searchInput) {
 </script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
+
 
 
 
