@@ -37,6 +37,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $address     = trim($_POST['address'] ?? '');
         $phone       = trim($_POST['phone'] ?? '');
         $email       = trim($_POST['email'] ?? '');
+        $latitude    = !empty($_POST['latitude']) ? (float) $_POST['latitude'] : null;
+        $longitude   = !empty($_POST['longitude']) ? (float) $_POST['longitude'] : null;
         $status      = ($_POST['status'] ?? 'active') === 'inactive' ? 'inactive' : 'active';
         $managerId   = !empty($_POST['branch_manager_id']) ? (int) $_POST['branch_manager_id'] : null;
 
@@ -71,9 +73,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $stmt = $db->prepare("
                     INSERT INTO branches
-                        (branch_name, branch_code, shopify_location_id, leajlak_shop_id, address, phone, email, branch_manager_id, status)
+                        (branch_name, branch_code, shopify_location_id, leajlak_shop_id, address, latitude, longitude, phone, email, branch_manager_id, status)
                     VALUES
-                        (:name, :code, :shopify_loc, :leajlak_shop, :addr, :phone, :email, :mgr, :status)
+                        (:name, :code, :shopify_loc, :leajlak_shop, :addr, :lat, :lng, :phone, :email, :mgr, :status)
                 ");
                 $stmt->execute([
                     ':name'   => $branchName,
@@ -736,6 +738,7 @@ if (searchInput) {
 </script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
+
 
 
 
