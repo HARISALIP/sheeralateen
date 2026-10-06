@@ -3,7 +3,7 @@
 class LeajlakService
 {
     // The base URL for Leajlak's REST API
-    const BASE_URL = 'https://staging.4ulogistic.com/api/partner-v2';
+    const BASE_URL = 'https://app.leajlak.com/api/partner-v2';
 
     // Values from Leajlak REST API specs
     const PAYMENT_PREPAID         = '0'; // 0 = pre paid
@@ -135,8 +135,76 @@ class LeajlakService
         ];
     }
 
+    
+    /**
+     * Create a shop (branch) under the client account via JSON REST API.
+     */
+    public function createShop(
+        string $shopName,
+        string $address,
+        string $contactPersonName,
+        string $contactPersonPhone,
+        string $shopEmail,
+        string $location = ''
+    ): array {
+        if (empty($this->apiToken)) {
+            return $this->fail('leajlak_api_token not configured in system_settings');
+        }
+
+        $payload = [
+            'name' => $shopName,
+            'location' => $location,
+            'address' => $address,
+            'contact_person_name' => $contactPersonName,
+            'contact_person_phone' => $contactPersonPhone,
+            'shop_email' => $shopEmail
+        ];
+
+        if (empty($location)) {
+            $payload['location'] = '21.5433,39.1728';
+        }
+
+        $ch = curl_init('https://app.leajlak.com/api/partner/shops');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Accept: application/json',
+            'Authorization: Bearer ' . $this->apiToken
+        ]);
+
+        $body = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode >= 500) {
+            return $this->fail("POST /shops returned HTTP {$httpCode} - $body");
+        }
+        if ($httpCode >= 400) {
+            $errorMsg = "API returned HTTP {$httpCode}";
+            $jsonResp = json_decode($body, true);
+            if ($jsonResp && isset($jsonResp['message'])) {
+                $errorMsg = $jsonResp['message'];
+            }
+            return $this->fail("Leajlak Error: " . $errorMsg . " - $body");
+        }
+
+        $jsonResp = json_decode($body, true);
+        $shopId = $jsonResp['shop_id'] ?? null;
+
+        return [
+            'success' => true,
+            'shop_id' => $shopId,
+            'response' => $jsonResp,
+            'error'   => null,
+        ];
+    }
+
     private function fail(string $error): array
     {
         return ['success' => false, 'leajlak_order_id' => null, 'error' => $error];
     }
 }
+
+
