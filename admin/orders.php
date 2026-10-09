@@ -78,7 +78,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     // Ignore inline sync errors, cron will catch it
                 }
                 
-                flash('success', "Order {$order['order_number']} updated and synced to Shopify instantly.");
+                if (!$leajlakSuccess) {
+                    flash('warning', "Order {$order['order_number']} updated, but Leajlak Dispatch FAILED: " . $leajlakError);
+                } else {
+                    flash('success', "Order {$order['order_number']} updated and synced to Shopify instantly.");
+                }
             } else {
                 flash('success', "Order {$order['order_number']} updated locally (not linked to Shopify).");
             }
@@ -411,6 +415,7 @@ document.querySelectorAll('.btn-retry').forEach(btn => {
 </script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
+
 
 
 
