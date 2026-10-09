@@ -49,15 +49,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             }
             
             // 2.5 Trigger Leajlak Delivery if moved to 'Ready'
+            $leajlakSuccess = true;
+            $leajlakError = '';
             if ($order['current_status'] !== 'Ready' && $newStatus === 'Ready') {
                 $leajlak = new LeajlakService($db);
                 $leajlakResult = $leajlak->createOrderFromRow($order);
                 if (!$leajlakResult['success']) {
+                    $leajlakSuccess = false;
+                    $leajlakError = $leajlakResult['error'];
                     ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_order_failed', 'Failed to create Leajlak order: ' . $leajlakResult['error'], null, (int) $orderId);
                 } else {
                     ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_order_created', 'Leajlak order created: ' . $leajlakResult['leajlak_order_id'], null, (int) $orderId);
                 }
             }
+
+
+
+
+
+
+
+
+
             
             // 3. Enqueue Shopify Sync (Push)
             if ($order['shopify_order_id']) {
