@@ -303,6 +303,12 @@ function statusBadge($s) {
     border-color: #3b82f6;
     color: #fff;
 }
+.step.cancelled .step-icon {
+    background: #ef4444 !important;
+    border-color: #ef4444 !important;
+    color: #fff !important;
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2);
+}
 .step h4 {
     margin: 0 0 5px;
     font-size: 0.9rem;
@@ -319,6 +325,71 @@ function statusBadge($s) {
 }
 .step.current h4 {
     color: #3b82f6;
+}
+.step.cancelled h4 {
+    color: #ef4444 !important;
+    font-weight: 700;
+}
+.step.cancelled p {
+    color: #ef4444 !important;
+    font-weight: 500;
+}
+.step.faded {
+    opacity: 0.45;
+}
+.tracking-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 25px;
+}
+.tracking-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.tracking-badge-cancelled {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #fca5a5;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 3px 12px;
+    border-radius: 9999px;
+}
+.cancelled-alert-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #fef2f2;
+    border: 1px solid #fee2e2;
+    border-left: 4px solid #ef4444;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 24px;
+    color: #991b1b;
+}
+.cancelled-alert-banner i {
+    font-size: 1.35rem;
+    color: #ef4444;
+}
+.cancelled-alert-banner strong {
+    display: block;
+    font-size: 0.95rem;
+    color: #991b1b;
+    margin-bottom: 2px;
+}
+.cancelled-alert-banner p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #b91c1c;
 }
 .captain-card {
     background: #f8fafc;
@@ -347,54 +418,126 @@ function statusBadge($s) {
 
 <div class="card" style="margin-top: 24px;">
     <div class="card-body tracking-container">
-        <div class="tracking-header">
-            <h3>Order Tracking</h3>
-            <p>Follow your order journey in real-time</p>
-        </div>
-        
         <?php
+            $isCancelled = ($order['current_status'] === 'Cancelled' || in_array(strtolower($order['leajlak_status'] ?? ''), ['canceled', 'cancelled', 'cancel request accepted']));
+            $isReturned  = ($order['current_status'] === 'Returned' || in_array(strtolower($order['leajlak_status'] ?? ''), ['return to foryou', 'return to client', 'client return accepted']));
+
             $statusMap = [
                 'order accept' => 2, 'start ride' => 2,
                 'reached shop' => 3, 'order picked' => 3,
                 'shipped' => 4, 'reached destination' => 4, 're route' => 4,
                 'delivered' => 5
             ];
-            if (!empty($order['leajlak_status'])) {
-                $currentStep = $statusMap[strtolower($order['leajlak_status'])] ?? 1;
+
+            if ($isCancelled) {
+                $ls = strtolower($order['leajlak_status'] ?? '');
+                if (strpos($ls, 'ship') !== false || strpos($ls, 'destination') !== false || strpos($ls, 'route') !== false) {
+                    $cancelledStep = 4;
+                } elseif (strpos($ls, 'pick') !== false || strpos($ls, 'shop') !== false) {
+                    $cancelledStep = 3;
+                } elseif (!empty($order['leajlak_captain_name']) || strpos($ls, 'accept') !== false || strpos($ls, 'ride') !== false) {
+                    $cancelledStep = 2;
+                } else {
+                    $cancelledStep = 1;
+                }
+                $currentStep = $cancelledStep;
             } else {
-                $fallback = ['New'=>0, 'Assigned'=>0, 'Accepted'=>0, 'Preparing'=>0, 'Ready'=>1, 'Out For Delivery'=>4, 'Delivered'=>5];
-                $currentStep = $fallback[$order['current_status']] ?? 0;
+                $cancelledStep = 0;
+                if (!empty($order['leajlak_status'])) {
+                    $currentStep = $statusMap[strtolower($order['leajlak_status'])] ?? 1;
+                } else {
+                    $fallback = ['New'=>0, 'Assigned'=>0, 'Accepted'=>0, 'Preparing'=>0, 'Ready'=>1, 'Out For Delivery'=>4, 'Delivered'=>5];
+                    $currentStep = $fallback[$order['current_status']] ?? 0;
+                }
             }
         ?>
 
+        <div class="tracking-header-row">
+            <div>
+                <div class="tracking-title-wrap">
+                    <h3 style="margin: 0; color: #637286; font-size: 1.5rem; font-weight: 500;">Order Tracking</h3>
+                    <?php if ($isCancelled): ?>
+                        <span class="tracking-badge-cancelled"><i class="fa-solid fa-ban"></i> Cancelled</span>
+                    <?php elseif ($isReturned): ?>
+                        <span class="tracking-badge-cancelled" style="background: #fef3c7; color: #b45309; border-color: #fcd34d;"><i class="fa-solid fa-arrow-rotate-left"></i> Returned</span>
+                    <?php endif; ?>
+                </div>
+                <p style="margin: 5px 0 0; color: #8c98a4; font-size: 0.9rem;">Follow your order journey in real-time</p>
+            </div>
+        </div>
+
+        <?php if ($isCancelled): ?>
+        <div class="cancelled-alert-banner">
+            <i class="fa-solid fa-circle-xmark"></i>
+            <div>
+                <strong>Order Cancelled</strong>
+                <p>This order was cancelled on Leajlak. Delivery has been terminated.</p>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <div class="progress-track">
-            <div class="step <?= $currentStep >= 1 ? ($currentStep == 1 ? 'current' : 'completed') : '' ?>">
-                <div class="step-icon"><i class="fa-solid fa-check"></i></div>
+            <?php
+                $getStepState = function($stepNum) use ($isCancelled, $cancelledStep, $currentStep) {
+                    if ($isCancelled) {
+                        if ($stepNum < $cancelledStep) {
+                            return ['class' => 'completed', 'icon' => 'fa-check'];
+                        } elseif ($stepNum == $cancelledStep) {
+                            return ['class' => 'cancelled', 'icon' => 'fa-xmark'];
+                        } else {
+                            return ['class' => 'faded', 'icon' => null];
+                        }
+                    } else {
+                        if ($currentStep >= $stepNum) {
+                            return ['class' => ($currentStep == $stepNum ? 'current' : 'completed'), 'icon' => null];
+                        }
+                        return ['class' => '', 'icon' => null];
+                    }
+                };
+
+                $s1 = $getStepState(1);
+                $s2 = $getStepState(2);
+                $s3 = $getStepState(3);
+                $s4 = $getStepState(4);
+                $s5 = $getStepState(5);
+            ?>
+
+            <div class="step <?= $s1['class'] ?>">
+                <div class="step-icon"><i class="fa-solid <?= $s1['icon'] ?: 'fa-check' ?>"></i></div>
                 <h4>New Order</h4>
-                <p>New order is placed</p>
+                <p><?= ($isCancelled && $cancelledStep == 1) ? 'Cancelled at this stage' : 'New order is placed' ?></p>
             </div>
-            <div class="step <?= $currentStep >= 2 ? ($currentStep == 2 ? 'current' : 'completed') : '' ?>">
-                <div class="step-icon"><i class="fa-solid fa-check"></i></div>
+            <div class="step <?= $s2['class'] ?>">
+                <div class="step-icon"><i class="fa-solid <?= $s2['icon'] ?: 'fa-check' ?>"></i></div>
                 <h4>Order Accept</h4>
-                <p>Your order has been accepted</p>
+                <p><?= ($isCancelled && $cancelledStep == 2) ? 'Cancelled at this stage' : 'Your order has been accepted' ?></p>
             </div>
-            <div class="step <?= $currentStep >= 3 ? ($currentStep == 3 ? 'current' : 'completed') : '' ?>">
-                <div class="step-icon"><i class="fa-solid fa-motorcycle"></i></div>
+            <div class="step <?= $s3['class'] ?>">
+                <div class="step-icon"><i class="fa-solid <?= $s3['icon'] ?: 'fa-motorcycle' ?>"></i></div>
                 <h4>Order Picked</h4>
-                <p>Order picked up from shop</p>
+                <p><?= ($isCancelled && $cancelledStep == 3) ? 'Cancelled at this stage' : 'Order picked up from shop' ?></p>
             </div>
-            <div class="step <?= $currentStep >= 4 ? ($currentStep == 4 ? 'current' : 'completed') : '' ?>">
-                <div class="step-icon"><i class="fa-solid fa-truck-fast"></i></div>
+            <div class="step <?= $s4['class'] ?>">
+                <div class="step-icon"><i class="fa-solid <?= $s4['icon'] ?: 'fa-truck-fast' ?>"></i></div>
                 <h4>Shipped</h4>
-                <p>Order is on the way to you</p>
+                <p><?= ($isCancelled && $cancelledStep == 4) ? 'Cancelled at this stage' : 'Order is on the way to you' ?></p>
             </div>
-            <div class="step <?= $currentStep >= 5 ? ($currentStep == 5 ? 'current' : 'completed') : '' ?>">
-                <div class="step-icon"><i class="fa-solid fa-check"></i></div>
+            <div class="step <?= $s5['class'] ?>">
+                <div class="step-icon"><i class="fa-solid <?= $s5['icon'] ?: 'fa-check' ?>"></i></div>
                 <h4>Delivered</h4>
                 <p>Order successfully delivered</p>
             </div>
         </div>
 
+        <?php if (!empty($order['leajlak_captain_name'])): ?>
+        <div class="captain-card">
+            <div class="captain-avatar"><i class="fa-solid fa-motorcycle"></i></div>
+            <div class="captain-info">
+                <h4><?= e($order['leajlak_captain_name']) ?></h4>
+                <p><?= !empty($order['leajlak_captain_phone']) ? '<i class="fa-solid fa-phone"></i> ' . e($order['leajlak_captain_phone']) : 'Delivery Captain' ?></p>
+            </div>
+        </div>
+        <?php endif; ?>
 
     </div>
 </div>
