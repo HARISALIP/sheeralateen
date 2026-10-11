@@ -1,0 +1,8 @@
+<?php
+require_once __DIR__ . '/core/bootstrap.php';
+$db = Database::getConnection();
+$token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIxMCIsImp0aSI6Ijg3N2U4NjliOTM3ZDYzNzQ4NDU5ZWY0YTNlMzk2NzY1NGYzYzhmNWEzYzQ4NzM2NTIxZTEwYTg4MzZiZTI3ZDNlMzU1M2E4NTQwMTNmODczIiwiaWF0IjoxNzkxNzEzNDUxLjAzMTIwMSwibmJmIjoxNzkxNzEzNDUxLjAzMTIwMywiZXhwIjo0OTQ3Mzg3MDUxLjAyNTU1Nywic3ViIjoiNTMwIiwic2NvcGVzIjpbXX0.V932amB11MREUaADwJ55eqPIniZVI5yWQ9n9uOrxij5Vzq-7aZRy8p9utKT2wncq4CgTPu2Qt4Ixr-Ym6xnSoMw2KWPpdTVKyX-vt3ixeUNJXjmSuCMmtWBi4k4erzjCDsXdVfaVBO1mBnw1Wk_EbOkYT9u11Ob3AkyGNhjs_mcdMWKv0Dd6aoW4lWsr9P9DmxJwiWcUgeI7yAj79KnoMQ5InyUfW4lV-987BcP6r2WtnOL61oPfI3zVr1cg6MvNdPtzrp3LD2bjjvJ6QqW0U4zFRGUQs_ViHeV8w3Qn-wtNflTP9J6V6mAFxbeW1mhQXLY9i3ZBN_4amYkzHesr0HzdgIiJA2tdzVhMnD_wfM-vidCPOeNLxQSkm_NE9fBave72GtehebkCj9jGz56mimT63pOYDnNbwt8AdIXBjczuWrL2Q7XF9PXlyxL6_GjG1UCnRCtZm9pMCFl5oRLocQVs2Hu3pImNfzELkK6jdNStA4_85mk5tR3dtacItnWr3kJH_dcdb3Svalny0yETKJjotb2MZR0RDYMX0PKpzUI2zJQTXZHFDOfuD7bQk6D5nNVB2WEhACv4cSb768YpSwu_iEmgv2VdtWvQiRIQCfo4-m1l75oMZfVusI2Z5ni6z4xlY51uQgYrSv_TiUDGxZbnBZppmiwcXo8zQZzI8n8";
+$stmt = $db->prepare("UPDATE system_settings SET setting_value = :val WHERE setting_key = 'leajlak_api_token'");
+$result = $stmt->execute([':val' => $token]);
+$newLen = strlen($token);
+echo "Updated: " . $stmt->rowCount() . " row(s). New token length: $newLen chars.";
