@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     
     if ($orderId > 0 && in_array($newStatus, $validStatuses) && in_array($newPaymentStatus, $validPaymentStatuses)) {
         // Fetch order to verify and log
-        $stmt = $db->prepare("SELECT order_number, shopify_order_id, current_status, payment_status FROM orders WHERE id = :id AND assigned_branch_id = :bid");
+        $stmt = $db->prepare("SELECT o.order_number, o.shopify_order_id, o.current_status, o.payment_status, o.customer_phone, o.delivery_address, o.total_amount, b.leajlak_shop_id, o.customer_name, o.customer_email, o.leajlak_order_id FROM orders o LEFT JOIN branches b ON o.assigned_branch_id = b.id WHERE o.id = :id AND o.assigned_branch_id = :bid");
         $stmt->execute([':id' => $orderId, ':bid' => $branchId]);
         $order = $stmt->fetch();
         
@@ -72,7 +72,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     // Ignore inline sync errors, cron will catch it
                 }
                 
-                flash('success', "Order {$order['order_number']} updated and synced to Shopify instantly.");
+                if (!empty($leajlakCancelWarning)) {
+                    flash('warning', "Order {$order['order_number']} marked Cancelled locally, but Leajlak Cancel reported: " . $leajlakCancelWarning);
+                } elseif (!$leajlakSuccess) {
+                    flash('warning', "Order {$order['order_number']} updated, but Leajlak Dispatch FAILED: " . $leajlakError);
+                } else {
+                    flash('success', "Order {$order['order_number']} updated and synced to Shopify instantly.");
+                }
             } else {
                 flash('success', "Order {$order['order_number']} updated locally (not linked to Shopify).");
             }

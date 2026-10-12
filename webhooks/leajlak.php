@@ -31,7 +31,7 @@ try {
 
         $shopifyOrderId = (string) $payload["id"];
         $leajlakStatus  = (string) $payload["status"];
-        $dspOrderId     = isset($payload["dsp_order_id"]) ? (int) $payload["dsp_order_id"] : null;
+        $dspOrderId     = isset($payload["dsp_order_id"]) ? (string) $payload["dsp_order_id"] : null;
         $captainName    = isset($payload["driver"]["name"]) ? (string) $payload["driver"]["name"] : null;
         $captainPhone   = isset($payload["driver"]["phone"]) ? (string) $payload["driver"]["phone"] : null;
 
@@ -79,8 +79,8 @@ try {
             $finalStatusUpdate = "current_status = :status,";
         }
         
-        $stmtStr = "UPDATE orders SET $finalStatusUpdate leajlak_status = :lstatus, leajlak_captain_name = COALESCE(:cname, leajlak_captain_name), leajlak_captain_phone = COALESCE(:cphone, leajlak_captain_phone), updated_at = NOW() WHERE id = :id";
-        $params = [":lstatus" => $leajlakStatus, ":cname" => $captainName, ":cphone" => $captainPhone, ":id" => $localOrderId];
+        $stmtStr = "UPDATE orders SET $finalStatusUpdate leajlak_status = :lstatus, leajlak_order_id = COALESCE(:dorder_id, leajlak_order_id), leajlak_captain_name = COALESCE(:cname, leajlak_captain_name), leajlak_captain_phone = COALESCE(:cphone, leajlak_captain_phone), updated_at = NOW() WHERE id = :id";
+        $params = [":lstatus" => $leajlakStatus, ":dorder_id" => $dspOrderId, ":cname" => $captainName, ":cphone" => $captainPhone, ":id" => $localOrderId];
         if ($finalStatusUpdate) { $params[":status"] = $newLocalStatus; }
         $db->prepare($stmtStr)->execute($params);
 

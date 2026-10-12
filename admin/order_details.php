@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $validPaymentStatuses = ['pending', 'paid', 'failed', 'refunded', 'partially_paid', 'partially_refunded', 'unpaid'];
     
     if ($updateOrderId > 0 && in_array($newStatus, $validStatuses) && in_array($newPaymentStatus, $validPaymentStatuses)) {
-        $stmt = $db->prepare("SELECT o.order_number, o.shopify_order_id, o.current_status, o.payment_status, o.customer_phone, o.delivery_address, o.total_amount, b.leajlak_shop_id, o.customer_name, o.customer_email FROM orders o LEFT JOIN branches b ON o.assigned_branch_id = b.id WHERE o.id = :id");
+        $stmt = $db->prepare("SELECT o.order_number, o.shopify_order_id, o.current_status, o.payment_status, o.customer_phone, o.delivery_address, o.total_amount, b.leajlak_shop_id, o.customer_name, o.customer_email, o.leajlak_order_id FROM orders o LEFT JOIN branches b ON o.assigned_branch_id = b.id WHERE o.id = :id");
         $stmt->execute([':id' => $updateOrderId]);
         $orderCheck = $stmt->fetch();
         
@@ -69,7 +69,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 }
             }
             
-            if (!$leajlakSuccess) {
+            if (!empty($leajlakCancelWarning)) {
+                flash('warning', 'Order #' . e($orderCheck['order_number']) . ' marked Cancelled locally, but Leajlak Cancel reported: ' . e($leajlakCancelWarning));
+            } elseif (!$leajlakSuccess) {
                 flash('warning', 'Order #' . e($orderCheck['order_number']) . ' updated locally, but Leajlak Dispatch FAILED: ' . e($leajlakError));
             } else {
                 flash('success', 'Order #' . e($orderCheck['order_number']) . ' updated and synced to Shopify.');

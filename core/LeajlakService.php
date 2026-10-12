@@ -126,7 +126,7 @@ class LeajlakService
         $jsonResp = json_decode($body, true);
         
         // Extract order ID from response if available (assuming 'order_id' or 'id')
-        $leajlakOrderId = $jsonResp['order_id'] ?? $jsonResp['id'] ?? null;
+        $leajlakOrderId = $jsonResp['dsp_order_id'] ?? $jsonResp['order_id'] ?? $jsonResp['id'] ?? null;
 
         return [
             'success'          => true,
@@ -136,6 +136,55 @@ class LeajlakService
     }
 
     
+    /**
+     * Cancel an order in Leajlak via REST API.
+     * Leajlak allows cancellation before pickup (status < Order Picked).
+     *
+     * @param string $dspOrderId The dsp_order_id (UUID string) of the order in Leajlak.
+     * @param string $reason Optional reason for cancellation.
+     * @return array ['success' => bool, 'error' => string|null]
+     */
+    public function cancelOrder(string $dspOrderId, string $reason = 'Cancelled by store manager'): array
+    {
+        if (empty($this->apiToken)) {
+            return $this->fail('leajlak_api_token not configured in system_settings');
+        }
+        if (empty($dspOrderId)) {
+            return $this->fail('No Leajlak order ID (dsp_order_id) found for this order.');
+        }
+
+        $url = self::BASE_URL . '/orders/' . urlencode(trim($dspOrderId));
+        $payload = [
+            'cancellation_reason' => $reason ?: 'Cancelled by store manager'
+        ];
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Accept: application/json',
+            'Authorization: Bearer ' . $this->apiToken
+        ]);
+
+        $body = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        // Expected 202 Accepted (or 200)
+        if ($httpCode === 200 || $httpCode === 202) {
+            return [
+                'success' => true,
+                'error'   => null,
+            ];
+        }
+
+        $jsonResp = json_decode($body, true);
+        $errorMsg = $jsonResp['message'] ?? "API returned HTTP {$httpCode}";
+        return $this->fail("Leajlak Cancel Error: " . $errorMsg);
+    }
+
     /**
      * Create a shop (branch) under the client account via JSON REST API.
      */

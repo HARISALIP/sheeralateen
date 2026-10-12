@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     
     if ($orderId > 0 && in_array($newStatus, $validStatuses) && in_array($newPaymentStatus, $validPaymentStatuses)) {
         // Fetch order to verify and log
-        $stmt = $db->prepare("SELECT o.order_number, o.shopify_order_id, o.current_status, o.payment_status, o.customer_phone, o.delivery_address, o.total_amount, b.leajlak_shop_id, o.customer_name, o.customer_email FROM orders o LEFT JOIN branches b ON o.assigned_branch_id = b.id WHERE o.id = :id");
+        $stmt = $db->prepare("SELECT o.order_number, o.shopify_order_id, o.current_status, o.payment_status, o.customer_phone, o.delivery_address, o.total_amount, b.leajlak_shop_id, o.customer_name, o.customer_email, o.leajlak_order_id FROM orders o LEFT JOIN branches b ON o.assigned_branch_id = b.id WHERE o.id = :id");
         $stmt->execute([':id' => $orderId]);
         $order = $stmt->fetch();
         
@@ -48,9 +48,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 ]);
             }
             
-            // 2.5 Trigger Leajlak Delivery if moved to 'Ready'
+            // 2.5 Trigger Leajlak Delivery if moved to 'Ready' or Cancel if moved to 'Cancelled'
             $leajlakSuccess = true;
             $leajlakError = '';
+            $leajlakCancelWarning = '';
+
             if ($order['current_status'] !== 'Ready' && $newStatus === 'Ready') {
                 $leajlak = new LeajlakService($db);
                 $leajlakResult = $leajlak->createOrderFromRow($order);
@@ -59,7 +61,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     $leajlakError = $leajlakResult['error'];
                     ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_order_failed', 'Failed to create Leajlak order: ' . $leajlakResult['error'], null, (int) $orderId);
                 } else {
-                    ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_order_created', 'Leajlak order created: ' . $leajlakResult['leajlak_order_id'], null, (int) $orderId);
+                    $dspId = $leajlakResult['leajlak_order_id'] ?? null;
+                    if ($dspId) {
+                        $db->prepare("UPDATE orders SET leajlak_order_id = :lid WHERE id = :id")->execute([':lid' => $dspId, ':id' => $orderId]);
+                    }
+                    ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_order_created', 'Leajlak order created: ' . ($dspId ?: ''), null, (int) $orderId);
+                }
+            } elseif ($order['current_status'] !== 'Cancelled' && $newStatus === 'Cancelled') {
+                // If order has a Leajlak order ID, trigger cancellation in Leajlak
+                $dspId = $order['leajlak_order_id'] ?? null;
+                if ($dspId) {
+                    $leajlak = new LeajlakService($db);
+                    $cancelResult = $leajlak->cancelOrder($dspId, 'Cancelled in CRM');
+                    if (!$cancelResult['success']) {
+                        $leajlakCancelWarning = $cancelResult['error'];
+                        ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_cancel_failed', 'Failed to cancel Leajlak order: ' . $cancelResult['error'], null, (int) $orderId);
+                    } else {
+                        ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_order_cancelled', 'Cancelled Leajlak order: ' . $dspId, null, (int) $orderId);
+                        $db->prepare("UPDATE orders SET leajlak_status = 'Canceled' WHERE id = :id")->execute([':id' => $orderId]);
+                    }
                 }
             }
 
@@ -91,7 +111,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     // Ignore inline sync errors, cron will catch it
                 }
                 
-                if (!$leajlakSuccess) {
+                if (!empty($leajlakCancelWarning)) {
+                    flash('warning', "Order {$order['order_number']} marked Cancelled locally, but Leajlak Cancel reported: " . $leajlakCancelWarning);
+                } elseif (!$leajlakSuccess) {
                     flash('warning', "Order {$order['order_number']} updated, but Leajlak Dispatch FAILED: " . $leajlakError);
                 } else {
                     flash('success', "Order {$order['order_number']} updated and synced to Shopify instantly.");
