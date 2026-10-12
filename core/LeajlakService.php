@@ -79,7 +79,7 @@ class LeajlakService
 
         $payload = [
             'id' => preg_replace('/[^A-Za-z0-9]/', '', $clientOrderId),
-            'shop_id' => $shopId ?: '821017856', // default fallback shop ID
+            'shop_id' => $shopId ?: '17081', // default fallback shop ID
             'delivery_details' => [
                 'name' => $customerName ?: 'Customer',
                 'phone' => $customerPhone,

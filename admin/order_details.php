@@ -45,10 +45,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             }
             
             // Trigger Leajlak Delivery if moved to 'Ready'
+            $leajlakSuccess = true;
+            $leajlakError = '';
             if ($orderCheck['current_status'] !== 'Ready' && $newStatus === 'Ready') {
                 $leajlak = new LeajlakService($db);
                 $leajlakResult = $leajlak->createOrderFromRow($orderCheck);
                 if (!$leajlakResult['success']) {
+                    $leajlakSuccess = false;
+                    $leajlakError = $leajlakResult['error'];
                     ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_order_failed', 'Failed to create Leajlak order: ' . $leajlakResult['error'], null, (int) $updateOrderId);
                 } else {
                     ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_order_created', 'Leajlak order created: ' . $leajlakResult['leajlak_order_id'], null, (int) $updateOrderId);
@@ -65,7 +69,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 }
             }
             
-            flash('success', 'Order #' . e($orderCheck['order_number']) . ' updated and synced to Shopify.');
+            if (!$leajlakSuccess) {
+                flash('warning', 'Order #' . e($orderCheck['order_number']) . ' updated locally, but Leajlak Dispatch FAILED: ' . e($leajlakError));
+            } else {
+                flash('success', 'Order #' . e($orderCheck['order_number']) . ' updated and synced to Shopify.');
+            }
+        }
+    }
+    header('Location: order_details.php?id=' . $updateOrderId);
+    exit;
+}
+
+// Handle branch reassignment
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_branch') {
+    if (!csrf_verify($_POST['csrf_token'] ?? '')) {
+        flash('error', 'Security check failed. Please try again.');
+        header('Location: order_details.php?id=' . (int)($_POST['order_id'] ?? 0));
+        exit;
+    }
+    $updateOrderId = (int)($_POST['order_id'] ?? 0);
+    $newBranchId   = (int)($_POST['new_branch_id'] ?? 0);
+    if ($updateOrderId > 0 && $newBranchId > 0) {
+        $bCheck = $db->prepare("SELECT branch_name FROM branches WHERE id = :id AND deleted_at IS NULL");
+        $bCheck->execute([':id' => $newBranchId]);
+        $bName = $bCheck->fetchColumn();
+        if ($bName) {
+            $stmtU = $db->prepare("UPDATE orders SET assigned_branch_id = :bid, updated_at = NOW() WHERE id = :id");
+            $stmtU->execute([':bid' => $newBranchId, ':id' => $updateOrderId]);
+            ActivityLogger::log($_SESSION['user_id'] ?? null, 'order_branch_reassigned', "Branch reassigned to " . $bName, null, $updateOrderId);
+            flash('success', "Branch reassigned to {$bName} successfully.");
         }
     }
     header('Location: order_details.php?id=' . $updateOrderId);
@@ -89,6 +121,17 @@ $stmt = $db->prepare("
 ");
 $stmt->execute([':id' => $orderId]);
 $order = $stmt->fetch();
+
+// Check if recent Leajlak dispatch failed for this order
+$leajlakFailedLog = null;
+if ($order) {
+    $lastLogStmt = $db->prepare("SELECT description, created_at FROM activity_logs WHERE order_id = :oid AND action = 'leajlak_order_failed' ORDER BY id DESC LIMIT 1");
+    $lastLogStmt->execute([':oid' => $order['id']]);
+    $leajlakFailedLog = $lastLogStmt->fetch();
+}
+
+// Fetch all active branches for branch reassignment
+$allBranches = $db->query("SELECT id, branch_name, leajlak_shop_id FROM branches WHERE deleted_at IS NULL ORDER BY branch_name ASC")->fetchAll();
 
 if (!$order) {
     flash('error', 'Order not found.');
@@ -655,6 +698,43 @@ document.getElementById('modal-update-status').addEventListener('click', functio
     if (e.target === this) closeModal('modal-update-status');
 });
 </script>
+
+
+<!-- Modal: Change Branch -->
+<div id="modal-change-branch" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
+    <div class="card" style="width: 100%; max-width: 440px; margin: 20px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600;">Change Assigned Branch</h3>
+            <button type="button" onclick="document.getElementById('modal-change-branch').style.display='none'" style="background: none; border: none; font-size: 1.25rem; cursor: pointer; color: #94a3b8;">&times;</button>
+        </div>
+        <form method="POST">
+            <div class="card-body">
+                <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
+                <input type="hidden" name="action" value="update_branch">
+                <input type="hidden" name="order_id" value="<?= $order['id'] ?>">
+                
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label for="new_branch_id" style="display: block; margin-bottom: 6px; font-size: 0.9rem; font-weight: 500;">Select Branch</label>
+                    <select name="new_branch_id" id="new_branch_id" class="form-control" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px;" required>
+                        <option value="">-- Choose Branch --</option>
+                        <?php foreach ($allBranches as $b): ?>
+                            <option value="<?= $b['id'] ?>" <?= $order['assigned_branch_id'] == $b['id'] ? 'selected' : '' ?>>
+                                <?= e($b['branch_name']) ?> <?= !empty($b['leajlak_shop_id']) ? '(Shop #' . e($b['leajlak_shop_id']) . ')' : '(No Leajlak ID)' ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <p style="font-size: 0.8rem; color: #64748b; margin: 0;">
+                    Changing the branch will update which store/shop prepares and dispatches this order.
+                </p>
+            </div>
+            <div class="card-footer" style="display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; background: #f8fafc; border-top: 1px solid #e2e8f0;">
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('modal-change-branch').style.display='none'">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Branch</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
 
