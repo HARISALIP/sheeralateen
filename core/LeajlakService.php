@@ -3,7 +3,8 @@
 class LeajlakService
 {
     // The base URL for Leajlak's REST API
-    const BASE_URL = 'https://app.leajlak.com/api/partner-v2';
+    const PROD_URL    = 'https://app.leajlak.com/api/partner-v2';
+    const STAGING_URL = 'https://staging.4ulogistic.com/api/partner-v2';
 
     // Values from Leajlak REST API specs
     const PAYMENT_PREPAID         = '0'; // 0 = pre paid
@@ -11,11 +12,14 @@ class LeajlakService
 
     private PDO $db;
     private string $apiToken;
+    private string $baseUrl;
 
     public function __construct(PDO $db)
     {
         $this->db       = $db;
         $this->apiToken = get_setting($db, 'leajlak_api_token', '');
+        $env = get_setting($db, 'leajlak_environment', 'production');
+        $this->baseUrl  = ($env === 'staging') ? self::STAGING_URL : self::PROD_URL;
     }
 
     /**
@@ -96,7 +100,7 @@ class LeajlakService
             ]
         ];
 
-        $ch = curl_init(self::BASE_URL . '/orders');
+        $ch = curl_init($this->baseUrl . '/orders');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
@@ -153,7 +157,7 @@ class LeajlakService
             return $this->fail('No Leajlak order ID (dsp_order_id) found for this order.');
         }
 
-        $url = self::BASE_URL . '/orders/' . urlencode(trim($dspOrderId));
+        $url = $this->baseUrl . '/orders/' . urlencode(trim($dspOrderId));
         $payload = [
             'cancellation_reason' => $reason ?: 'Cancelled by store manager'
         ];

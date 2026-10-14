@@ -29,6 +29,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $tab = $_POST['tab'] ?? '';
 
+    /* ── LEAJLAK DELIVERY ── */
+    if ($tab === 'leajlak') {
+        $env   = $_POST['leajlak_environment'] ?? 'production';
+        $token = trim($_POST['leajlak_api_token'] ?? '');
+        save_setting($db, 'leajlak_environment', $env);
+        save_setting($db, 'leajlak_api_token', $token);
+
+        ActivityLogger::log((int) $_SESSION['user_id'], 'settings_updated', 'Leajlak settings were updated (Mode: ' . $env . ').');
+        flash('success', 'Leajlak settings saved successfully.');
+        header('Location: settings.php?tab=leajlak');
+        exit;
+    }
+
     /* ── COMPANY + BRANDING ── */
     if ($tab === 'company') {
         $fields = ['company_name', 'company_email', 'company_phone', 'company_address'];
@@ -233,6 +246,11 @@ $timezones = [
                 <i class="fa-solid fa-sliders"></i> System
             </button>
 
+            <button class="tab-btn <?= $activeTab === 'leajlak' ? 'active' : '' ?>"
+                    onclick="switchTab('leajlak')"  id="tab-leajlak"
+                    role="tab" aria-selected="<?= $activeTab === 'leajlak' ? 'true' : 'false' ?>">
+                <i class="fa-solid fa-truck-fast"></i> Leajlak Delivery
+            </button>
             <button class="tab-btn <?= $activeTab === 'password' ? 'active' : '' ?>"
                     onclick="switchTab('password')" id="tab-password"
                     role="tab" aria-selected="<?= $activeTab === 'password' ? 'true' : 'false' ?>">
