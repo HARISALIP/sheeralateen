@@ -180,7 +180,7 @@ $s = [
 ];
 
 // Active tab from GET or POST redirect
-$activeTab = in_array($_GET['tab'] ?? '', ['company','system','password'])
+$activeTab = in_array($_GET['tab'] ?? '', ['company','system','leajlak','password'])
     ? $_GET['tab']
     : 'company';
 
@@ -414,6 +414,46 @@ $timezones = [
         <!-- ══════════════════════════════════
              TAB: Change Password
         ═══════════════════════════════════ -->
+                <!-- ──────────────────────────────────────────
+             TAB: Leajlak Delivery
+        ────────────────────────────────────────── -->
+        <div id="pane-leajlak" class="tab-pane <?= $activeTab === 'leajlak' ? 'active' : '' ?>" role="tabpanel">
+            <form method="POST" action="settings.php" id="form-leajlak">
+                <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
+                <input type="hidden" name="tab" value="leajlak">
+
+                <div class="section-title">Leajlak Delivery Integration</div>
+
+                <div style="max-width: 600px;">
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label for="leajlak_environment" style="font-weight: 600;">Environment Mode <span class="required">*</span></label>
+                        <select name="leajlak_environment" id="leajlak_environment" class="form-control" style="font-size: 14px; padding: 10px 12px;">
+                            <?php $currEnv = get_setting($db, 'leajlak_environment', 'production'); ?>
+                            <option value="production" <?= $currEnv === 'production' ? 'selected' : '' ?>>Production (app.leajlak.com)</option>
+                            <option value="staging" <?= $currEnv === 'staging' ? 'selected' : '' ?>>Staging (staging.4ulogistic.com)</option>
+                        </select>
+                        <span class="text-muted" style="font-size: 13px; display: block; margin-top: 5px;">
+                            Switch between Staging (sandbox/testing) and Production (real deliveries).
+                        </span>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 24px;">
+                        <label for="leajlak_api_token" style="font-weight: 600;">API Bearer Token <span class="required">*</span></label>
+                        <textarea name="leajlak_api_token" id="leajlak_api_token" class="form-control" rows="5" style="font-family: monospace; font-size: 13px;" placeholder="Paste your Bearer token here..." required><?= e(get_setting($db, 'leajlak_api_token', '')) ?></textarea>
+                        <span class="text-muted" style="font-size: 13px; display: block; margin-top: 5px;">
+                            Get this token from the <strong>Config Access &rarr; Api Key</strong> section of your Leajlak dashboard.
+                        </span>
+                    </div>
+
+                    <div style="margin-top: 24px; text-align: right;">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fa-solid fa-floppy-disk"></i> Save Leajlak Settings
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
         <div id="pane-password" class="tab-pane <?= $activeTab === 'password' ? 'active' : '' ?>" role="tabpanel">
             <form method="POST" action="settings.php" id="form-password">
                 <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
