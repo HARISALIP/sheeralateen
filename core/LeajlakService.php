@@ -173,7 +173,7 @@ class LeajlakService
         curl_close($ch);
 
         // Expected 202 Accepted (or 200)
-        if ($httpCode === 200 || $httpCode === 202) {
+        if ($httpCode >= 200 && $httpCode < 300) {
             return [
                 'success' => true,
                 'error'   => null,

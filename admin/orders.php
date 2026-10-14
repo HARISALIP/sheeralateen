@@ -48,7 +48,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 ]);
             }
             
-            // 2.5 Trigger Leajlak Delivery if moved to 'Ready' or Cancel if moved to 'Cancelled'
+                        // 2.5 Trigger Leajlak Delivery if moved to 'Ready' or Cancel if moved to 'Cancelled'
             $leajlakSuccess = true;
             $leajlakError = '';
             $leajlakCancelWarning = '';
@@ -68,29 +68,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_order_created', 'Leajlak order created: ' . ($dspId ?: ''), null, (int) $orderId);
                 }
             } elseif ($order['current_status'] !== 'Cancelled' && $newStatus === 'Cancelled') {
-                // If order has a Leajlak order ID, trigger cancellation in Leajlak
+                // Find dsp_order_id for this order
                 $dspId = $order['leajlak_order_id'] ?? null;
-                if ($dspId) {
-                    $leajlak = new LeajlakService($db);
-                    $cancelResult = $leajlak->cancelOrder($dspId, 'Cancelled in CRM');
-                    if (!$cancelResult['success']) {
-                        $leajlakCancelWarning = $cancelResult['error'];
-                        ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_cancel_failed', 'Failed to cancel Leajlak order: ' . $cancelResult['error'], null, (int) $orderId);
-                    } else {
-                        ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_order_cancelled', 'Cancelled Leajlak order: ' . $dspId, null, (int) $orderId);
-                        $db->prepare("UPDATE orders SET leajlak_status = 'Canceled' WHERE id = :id")->execute([':id' => $orderId]);
+                if (empty($dspId)) {
+                    $stmtDsp = $db->prepare("SELECT leajlak_order_id FROM orders WHERE id = :id");
+                    $stmtDsp->execute([':id' => $orderId]);
+                    $dspId = $stmtDsp->fetchColumn();
+                }
+                if (empty($dspId)) {
+                    $cleanNum = str_replace('#', '', $order['order_number']);
+                    $stmtWh = $db->prepare("SELECT payload FROM webhook_logs WHERE topic = 'leajlak/order_status' AND (payload LIKE :p1 OR payload LIKE :p2) ORDER BY id DESC LIMIT 1");
+                    $stmtWh->execute([':p1' => '%"id":"' . $cleanNum . '"%', ':p2' => '%"id":"#' . $cleanNum . '"%']);
+                    $whPayload = $stmtWh->fetchColumn();
+                    if ($whPayload) {
+                        $pDecoded = json_decode($whPayload, true);
+                        if (!empty($pDecoded['dsp_order_id'])) {
+                            $dspId = (string)$pDecoded['dsp_order_id'];
+                            $db->prepare("UPDATE orders SET leajlak_order_id = :lid WHERE id = :id")->execute([':lid' => $dspId, ':id' => $orderId]);
+                        }
                     }
                 }
+
+                // If still empty, fall back to clean order number
+                $cancelTargetId = !empty($dspId) ? $dspId : str_replace('#', '', $order['order_number']);
+
+                $leajlak = new LeajlakService($db);
+                $cancelResult = $leajlak->cancelOrder($cancelTargetId, 'Cancelled in CRM');
+                if (!$cancelResult['success']) {
+                    $leajlakCancelWarning = $cancelResult['error'];
+                    ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_cancel_failed', 'Failed to cancel Leajlak order: ' . $cancelResult['error'], null, (int) $orderId);
+                } else {
+                    ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_order_cancelled', 'Cancelled Leajlak order: ' . $cancelTargetId, null, (int) $orderId);
+                    $db->prepare("UPDATE orders SET leajlak_status = 'Canceled' WHERE id = :id")->execute([':id' => $orderId]);
+                }
             }
-
-
-
-
-
-
-
-
-
             
             // 3. Enqueue Shopify Sync (Push)
             if ($order['shopify_order_id']) {

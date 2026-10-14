@@ -44,9 +44,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 ]);
             }
             
-            // Trigger Leajlak Delivery if moved to 'Ready'
+                        // 2.5 Trigger Leajlak Delivery if moved to 'Ready' or Cancel if moved to 'Cancelled'
             $leajlakSuccess = true;
             $leajlakError = '';
+            $leajlakCancelWarning = '';
+
             if ($orderCheck['current_status'] !== 'Ready' && $newStatus === 'Ready') {
                 $leajlak = new LeajlakService($db);
                 $leajlakResult = $leajlak->createOrderFromRow($orderCheck);
@@ -55,7 +57,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     $leajlakError = $leajlakResult['error'];
                     ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_order_failed', 'Failed to create Leajlak order: ' . $leajlakResult['error'], null, (int) $updateOrderId);
                 } else {
-                    ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_order_created', 'Leajlak order created: ' . $leajlakResult['leajlak_order_id'], null, (int) $updateOrderId);
+                    $dspId = $leajlakResult['leajlak_order_id'] ?? null;
+                    if ($dspId) {
+                        $db->prepare("UPDATE orders SET leajlak_order_id = :lid WHERE id = :id")->execute([':lid' => $dspId, ':id' => $updateOrderId]);
+                    }
+                    ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_order_created', 'Leajlak order created: ' . ($dspId ?: ''), null, (int) $updateOrderId);
+                }
+            } elseif ($orderCheck['current_status'] !== 'Cancelled' && $newStatus === 'Cancelled') {
+                // Find dsp_order_id for this order
+                $dspId = $orderCheck['leajlak_order_id'] ?? null;
+                if (empty($dspId)) {
+                    $stmtDsp = $db->prepare("SELECT leajlak_order_id FROM orders WHERE id = :id");
+                    $stmtDsp->execute([':id' => $updateOrderId]);
+                    $dspId = $stmtDsp->fetchColumn();
+                }
+                if (empty($dspId)) {
+                    $cleanNum = str_replace('#', '', $orderCheck['order_number']);
+                    $stmtWh = $db->prepare("SELECT payload FROM webhook_logs WHERE topic = 'leajlak/order_status' AND (payload LIKE :p1 OR payload LIKE :p2) ORDER BY id DESC LIMIT 1");
+                    $stmtWh->execute([':p1' => '%"id":"' . $cleanNum . '"%', ':p2' => '%"id":"#' . $cleanNum . '"%']);
+                    $whPayload = $stmtWh->fetchColumn();
+                    if ($whPayload) {
+                        $pDecoded = json_decode($whPayload, true);
+                        if (!empty($pDecoded['dsp_order_id'])) {
+                            $dspId = (string)$pDecoded['dsp_order_id'];
+                            $db->prepare("UPDATE orders SET leajlak_order_id = :lid WHERE id = :id")->execute([':lid' => $dspId, ':id' => $updateOrderId]);
+                        }
+                    }
+                }
+
+                // If still empty, fall back to clean order number
+                $cancelTargetId = !empty($dspId) ? $dspId : str_replace('#', '', $orderCheck['order_number']);
+
+                $leajlak = new LeajlakService($db);
+                $cancelResult = $leajlak->cancelOrder($cancelTargetId, 'Cancelled in CRM');
+                if (!$cancelResult['success']) {
+                    $leajlakCancelWarning = $cancelResult['error'];
+                    ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_cancel_failed', 'Failed to cancel Leajlak order: ' . $cancelResult['error'], null, (int) $updateOrderId);
+                } else {
+                    ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_order_cancelled', 'Cancelled Leajlak order: ' . $cancelTargetId, null, (int) $updateOrderId);
+                    $db->prepare("UPDATE orders SET leajlak_status = 'Canceled' WHERE id = :id")->execute([':id' => $updateOrderId]);
                 }
             }
             
