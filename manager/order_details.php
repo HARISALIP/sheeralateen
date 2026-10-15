@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 } else {
                     $dspId = $leajlakResult['leajlak_order_id'] ?? null;
                     if ($dspId) {
-                        $db->prepare("UPDATE orders SET leajlak_order_id = :lid WHERE id = :id")->execute([':lid' => $dspId, ':id' => $updateOrderId]);
+                        $db->prepare("UPDATE orders SET leajlak_order_id = :lid, leajlak_status = 'New Order', leajlak_captain_name = NULL, leajlak_captain_phone = NULL WHERE id = :id")->execute([':lid' => $dspId, ':id' => $updateOrderId]);
                     }
                     ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_order_created', 'Leajlak order created: ' . ($dspId ?: ''), null, (int) $updateOrderId);
                 }
@@ -450,8 +450,8 @@ function statusBadge($s) {
 <div class="card" style="margin-top: 24px;">
     <div class="card-body tracking-container">
         <?php
-            $isCancelled = ($order['current_status'] === 'Cancelled' || in_array(strtolower($order['leajlak_status'] ?? ''), ['canceled', 'cancelled', 'cancel request accepted']));
-            $isReturned  = ($order['current_status'] === 'Returned' || in_array(strtolower($order['leajlak_status'] ?? ''), ['return to foryou', 'return to client', 'client return accepted']));
+            $isCancelled = ($order['current_status'] === 'Cancelled');
+            $isReturned  = ($order['current_status'] === 'Returned');
 
             $statusMap = [
                 'order accept' => 2, 'start ride' => 2,
@@ -461,12 +461,22 @@ function statusBadge($s) {
             ];
 
             if ($isCancelled) {
-                $ls = strtolower($order['leajlak_status'] ?? '');
-                if (strpos($ls, 'ship') !== false || strpos($ls, 'destination') !== false || strpos($ls, 'route') !== false) {
+                // Determine stage reached before cancellation from order status history
+                $stmtPrev = $db->prepare("
+                    SELECT notes FROM order_status_history 
+                    WHERE order_id = :oid 
+                      AND notes LIKE 'Leajlak webhook:%' 
+                      AND notes NOT LIKE '%Cancel%' 
+                    ORDER BY id DESC LIMIT 1
+                ");
+                $stmtPrev->execute([':oid' => $order['id']]);
+                $lastNote = strtolower($stmtPrev->fetchColumn() ?: '');
+
+                if (strpos($lastNote, 'ship') !== false || strpos($lastNote, 'destination') !== false || strpos($lastNote, 'route') !== false) {
                     $cancelledStep = 4;
-                } elseif (strpos($ls, 'pick') !== false || strpos($ls, 'shop') !== false) {
+                } elseif (strpos($lastNote, 'pick') !== false || strpos($lastNote, 'shop') !== false) {
                     $cancelledStep = 3;
-                } elseif (!empty($order['leajlak_captain_name']) || strpos($ls, 'accept') !== false || strpos($ls, 'ride') !== false) {
+                } elseif (strpos($lastNote, 'accept') !== false || strpos($lastNote, 'ride') !== false || !empty($order['leajlak_captain_name'])) {
                     $cancelledStep = 2;
                 } else {
                     $cancelledStep = 1;
@@ -478,7 +488,7 @@ function statusBadge($s) {
                     $currentStep = $statusMap[strtolower($order['leajlak_status'])] ?? 1;
                 } else {
                     $fallback = ['New'=>0, 'Assigned'=>0, 'Accepted'=>0, 'Preparing'=>0, 'Ready'=>1, 'Out For Delivery'=>4, 'Delivered'=>5];
-                    $currentStep = $fallback[$order['current_status']] ?? 0;
+                    $currentStep = $fallback[$order['current_status']] ?? 1;
                 }
             }
         ?>

@@ -75,7 +75,7 @@ try {
         $currentStatus = (string) $order["current_status"];
 
         $finalStatusUpdate = "";
-        if (in_array($newLocalStatus, ["Out For Delivery", "Delivered", "Cancelled", "Returned"])) {
+        if (in_array($newLocalStatus, ["Out For Delivery", "Delivered", "Cancelled", "Returned"]) || ($currentStatus === "Cancelled" && in_array($newLocalStatus, ["Accepted", "Preparing"]))) {
             $finalStatusUpdate = "current_status = :status,";
         }
         
