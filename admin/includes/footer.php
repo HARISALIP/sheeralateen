@@ -35,5 +35,6 @@
         }
     });
 </script>
+<script src="/assets/js/order-notifications.js"></script>
 </body>
 </html>

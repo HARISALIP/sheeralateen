@@ -13,12 +13,9 @@
         </div>
 
         <div class="topbar-right">
-            <?php if(false): ?>
-            <button class="topbar-icon" title="Notifications" id="btn-notifications">
-                <i class="fa-regular fa-bell"></i>
-                <span class="badge">3</span>
+            <button class="topbar-icon" title="Order Alerts & Sound" id="btn-notifications" type="button" style="background: none; border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-color, #1e293b); margin-right: 12px;">
+                <i class="fa-solid fa-bell"></i>
             </button>
-            <?php endif; ?>
 
             <a href="profile.php" class="user-profile" id="link-profile">
                 <div class="avatar">
