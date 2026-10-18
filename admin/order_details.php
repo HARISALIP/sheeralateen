@@ -164,6 +164,22 @@ $stmt = $db->prepare("
 $stmt->execute([':id' => $orderId]);
 $order = $stmt->fetch();
 
+if (isset($_GET['ajax_status'])) {
+    header('Content-Type: application/json');
+    if (!$order) {
+        echo json_encode(['error' => 'not found']);
+        exit;
+    }
+    echo json_encode([
+        'id'             => (int) $order['id'],
+        'current_status' => (string) $order['current_status'],
+        'leajlak_status' => (string) ($order['leajlak_status'] ?? ''),
+        'updated_at'     => (string) $order['updated_at'],
+        'is_final'       => in_array($order['current_status'], ['Delivered', 'Cancelled', 'Returned'])
+    ]);
+    exit;
+}
+
 // Check if recent Leajlak dispatch failed for this order
 $leajlakFailedLog = null;
 if ($order) {
@@ -797,6 +813,45 @@ document.getElementById('modal-update-status').addEventListener('click', functio
         </form>
     </div>
 </div>
+
+<script>
+(function() {
+    const isFinal = <?= json_encode(in_array($order['current_status'], ['Delivered', 'Cancelled', 'Returned'])) ?>;
+    if (isFinal) return;
+
+    let lastUpdatedAt = <?= json_encode((string)$order['updated_at']) ?>;
+    let lastLeajlakStatus = <?= json_encode((string)($order['leajlak_status'] ?? '')) ?>;
+    let lastStatus = <?= json_encode((string)$order['current_status']) ?>;
+    const orderId = <?= (int)$order['id'] ?>;
+
+    function checkLiveStatus() {
+        if (document.hidden) return;
+
+        // Skip if a modal is open
+        const statusModal = document.getElementById('modal-update-status');
+        const branchModal = document.getElementById('modal-change-branch');
+        if ((statusModal && statusModal.classList.contains('show')) || 
+            (branchModal && (branchModal.style.display === 'flex' || branchModal.style.display === 'block'))) {
+            return;
+        }
+
+        fetch('order_details.php?id=' + orderId + '&ajax_status=1', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data && data.updated_at) {
+                if (data.updated_at !== lastUpdatedAt || data.leajlak_status !== lastLeajlakStatus || data.current_status !== lastStatus) {
+                    window.location.reload();
+                }
+            }
+        })
+        .catch(() => {});
+    }
+
+    setInterval(checkLiveStatus, 10000);
+})();
+</script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
 

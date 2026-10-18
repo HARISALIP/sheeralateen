@@ -140,6 +140,22 @@ $stmt = $db->prepare("SELECT * FROM orders WHERE id = :id AND assigned_branch_id
 $stmt->execute([':id' => $orderId, ':bid' => $branchId]);
 $order = $stmt->fetch();
 
+if (isset($_GET['ajax_status'])) {
+    header('Content-Type: application/json');
+    if (!$order) {
+        echo json_encode(['error' => 'not found']);
+        exit;
+    }
+    echo json_encode([
+        'id'             => (int) $order['id'],
+        'current_status' => (string) $order['current_status'],
+        'leajlak_status' => (string) ($order['leajlak_status'] ?? ''),
+        'updated_at'     => (string) $order['updated_at'],
+        'is_final'       => in_array($order['current_status'], ['Delivered', 'Cancelled', 'Returned'])
+    ]);
+    exit;
+}
+
 if (!$order) {
     flash('error', 'Order not found or access denied.');
     header('Location: orders.php');
@@ -705,6 +721,43 @@ function closeModal(id) {
 document.getElementById('modal-update-status').addEventListener('click', function(e) {
     if (e.target === this) closeModal('modal-update-status');
 });
+</script>
+
+<script>
+(function() {
+    const isFinal = <?= json_encode(in_array($order['current_status'], ['Delivered', 'Cancelled', 'Returned'])) ?>;
+    if (isFinal) return;
+
+    let lastUpdatedAt = <?= json_encode((string)$order['updated_at']) ?>;
+    let lastLeajlakStatus = <?= json_encode((string)($order['leajlak_status'] ?? '')) ?>;
+    let lastStatus = <?= json_encode((string)$order['current_status']) ?>;
+    const orderId = <?= (int)$order['id'] ?>;
+
+    function checkLiveStatus() {
+        if (document.hidden) return;
+
+        // Skip if a modal is open
+        const statusModal = document.getElementById('modal-update-status');
+        if (statusModal && statusModal.classList.contains('show')) {
+            return;
+        }
+
+        fetch('order_details.php?id=' + orderId + '&ajax_status=1', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data && data.updated_at) {
+                if (data.updated_at !== lastUpdatedAt || data.leajlak_status !== lastLeajlakStatus || data.current_status !== lastStatus) {
+                    window.location.reload();
+                }
+            }
+        })
+        .catch(() => {});
+    }
+
+    setInterval(checkLiveStatus, 10000);
+})();
 </script>
 
 <?php require_once __DIR__ . '/includes/footer.php'; ?>
