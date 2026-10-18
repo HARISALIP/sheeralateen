@@ -454,8 +454,8 @@ function statusBadge($s) {
             $isReturned  = ($order['current_status'] === 'Returned');
 
             $statusMap = [
-                'order accept' => 2, 'start ride' => 2,
-                'reached shop' => 3, 'order picked' => 3,
+                'order accept' => 2, 'start ride' => 2, 'reached shop' => 2,
+                'order picked' => 3,
                 'shipped' => 4, 'reached destination' => 4, 're route' => 4,
                 'delivered' => 5
             ];
@@ -474,9 +474,9 @@ function statusBadge($s) {
 
                 if (strpos($lastNote, 'ship') !== false || strpos($lastNote, 'destination') !== false || strpos($lastNote, 'route') !== false) {
                     $cancelledStep = 4;
-                } elseif (strpos($lastNote, 'pick') !== false || strpos($lastNote, 'shop') !== false) {
+                } elseif (strpos($lastNote, 'pick') !== false) {
                     $cancelledStep = 3;
-                } elseif (strpos($lastNote, 'accept') !== false || strpos($lastNote, 'ride') !== false || !empty($order['leajlak_captain_name'])) {
+                } elseif (strpos($lastNote, 'shop') !== false || strpos($lastNote, 'accept') !== false || strpos($lastNote, 'ride') !== false || !empty($order['leajlak_captain_name'])) {
                     $cancelledStep = 2;
                 } else {
                     $cancelledStep = 1;
@@ -490,6 +490,16 @@ function statusBadge($s) {
                     $fallback = ['New'=>0, 'Assigned'=>0, 'Accepted'=>0, 'Preparing'=>0, 'Ready'=>1, 'Out For Delivery'=>4, 'Delivered'=>5];
                     $currentStep = $fallback[$order['current_status']] ?? 1;
                 }
+            }
+
+            $lStatusLower = strtolower($order['leajlak_status'] ?? '');
+            $step2Desc = 'Your order has been accepted';
+            if ($lStatusLower === 'reached shop') {
+                $step2Desc = 'Driver arrived at branch';
+            } elseif ($lStatusLower === 'start ride') {
+                $step2Desc = 'Driver on the way to branch';
+            } elseif ($lStatusLower === 'order accept') {
+                $step2Desc = 'Driver assigned & accepted';
             }
         ?>
 
@@ -551,7 +561,7 @@ function statusBadge($s) {
             <div class="step <?= $s2['class'] ?>">
                 <div class="step-icon"><i class="fa-solid <?= $s2['icon'] ?: 'fa-check' ?>"></i></div>
                 <h4>Order Accept</h4>
-                <p><?= ($isCancelled && $cancelledStep == 2) ? 'Cancelled at this stage' : 'Your order has been accepted' ?></p>
+                <p><?= ($isCancelled && $cancelledStep == 2) ? 'Cancelled at this stage' : $step2Desc ?></p>
             </div>
             <div class="step <?= $s3['class'] ?>">
                 <div class="step-icon"><i class="fa-solid <?= $s3['icon'] ?: 'fa-motorcycle' ?>"></i></div>
