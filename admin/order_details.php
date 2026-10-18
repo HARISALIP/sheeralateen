@@ -515,6 +515,21 @@ function statusBadge($s) {
 }
 .captain-info h4 { margin: 0 0 4px; font-size: 1rem; color: #1e293b; }
 .captain-info p { margin: 0; font-size: 0.85rem; color: #64748b; }
+@media (max-width: 768px) {
+    .step p {
+        display: none !important;
+    }
+    .step h4 {
+        font-size: 0.75rem;
+        margin-top: 6px;
+        line-height: 1.2;
+    }
+    .step-icon {
+        width: 38px;
+        height: 38px;
+        font-size: 0.95rem;
+    }
+}
 </style>
 
 <div class="card" style="margin-top: 24px;">
