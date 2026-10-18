@@ -305,7 +305,7 @@ function statusBadge($s) {
                     </td>
                     </td>
                     <td>
-                        <?= get_setting($db, 'currency_symbol', '₹') . ' ' . number_format($order['total_amount'], 2) ?>
+                        <?= get_setting($db, 'currency_symbol', 'SAR') . ' ' . number_format($order['total_amount'], 2) ?>
                     </td>
                     <td>
                         <form method="POST" action="orders.php" style="display:inline; margin:0;" class="inline-update-form">

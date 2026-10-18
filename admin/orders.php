@@ -309,7 +309,7 @@ function statusBadge($s) {
                         <?= $order['branch_name'] ? e($order['branch_name']) : '<span class="text-muted">Unassigned</span>' ?>
                     </td>
                     <td>
-                        <?= get_setting($db, 'currency_symbol', 'â‚¹') . ' ' . number_format($order['total_amount'], 2) ?>
+                        <?= get_setting($db, 'currency_symbol', 'SAR') . ' ' . number_format($order['total_amount'], 2) ?>
                     </td>
                     <td>
                         <form method="POST" action="orders.php" style="display:inline; margin:0;" class="inline-update-form">
