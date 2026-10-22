@@ -21,6 +21,19 @@ $stmt = $db->query("
     ORDER BY b.id ASC
 ");
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-header('Content-Type: application/json');
-echo json_encode($rows, JSON_PRETTY_PRINT);
+header('Content-Type: text/plain; charset=utf-8');
+echo "Branch ID | Branch Name | Branch Code | Branch Status | User ID | Manager Name | Login Email\n";
+echo "----------------------------------------------------------------------------------------------------\n";
+foreach ($rows as $r) {
+    echo sprintf(
+        "%-9s | %-20s | %-14s | %-13s | %-7s | %-22s | %s\n",
+        $r['branch_id'],
+        $r['branch_name'],
+        $r['branch_code'],
+        $r['branch_status'],
+        $r['user_id'] ?? 'NONE',
+        $r['manager_name'] ?? 'NONE',
+        $r['login_email'] ?? 'NONE'
+    );
+}
 exit;
