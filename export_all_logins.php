@@ -5,6 +5,7 @@
  * Downloads all branch login IDs and passwords as an Excel-compatible CSV file.
  */
 require_once __DIR__ . '/core/bootstrap.php';
+Auth::requireRole('super_admin', 'login.php');
 $db = Database::getConnection();
 
 // Query all branches with managers
