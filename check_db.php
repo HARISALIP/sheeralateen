@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/core/bootstrap.php';
+$db = Database::getConnection();
 $stmt = $db->query("
     SELECT 
         b.id AS branch_id,
