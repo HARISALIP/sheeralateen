@@ -13,7 +13,7 @@ try {
     $db->beginTransaction();
 
     // 1. Delete associated records
-    $db->exec("DELETE FROM sync_queue WHERE order_id IS NOT NULL");
+    $db->exec("DELETE FROM sync_queue WHERE entity_type = 'order'");
     $db->exec("DELETE FROM order_items");
     $db->exec("DELETE FROM order_notes");
     $db->exec("DELETE FROM order_status_history");
