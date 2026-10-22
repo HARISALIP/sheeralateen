@@ -8,8 +8,10 @@ print_r($stmt->fetchAll(PDO::FETCH_ASSOC));
 
 echo "\n--- WEBHOOK LOGS ---\n";
 try {
-    $stmt2 = $db->query("SELECT * FROM webhook_logs ORDER BY id DESC LIMIT 5");
-    print_r($stmt2->fetchAll(PDO::FETCH_ASSOC));
-} catch(Exception $e) {
-    echo $e->getMessage();
-}
+$stmt2 = $db->query("SELECT id, topic, processed, error_message, received_at FROM webhook_logs ORDER BY id DESC LIMIT 10");
+print_r($stmt2->fetchAll(PDO::FETCH_ASSOC));
+
+echo "\n--- ACTIVITY LOGS ---\n";
+$stmt3 = $db->query("SELECT id, action, description, created_at FROM activity_logs ORDER BY id DESC LIMIT 10");
+print_r($stmt3->fetchAll(PDO::FETCH_ASSOC));
+
