@@ -14,4 +14,8 @@ print_r($stmt2->fetchAll(PDO::FETCH_ASSOC));
 echo "\n--- ACTIVITY LOGS ---\n";
 $stmt3 = $db->query("SELECT id, action, description, created_at FROM activity_logs ORDER BY id DESC LIMIT 10");
 print_r($stmt3->fetchAll(PDO::FETCH_ASSOC));
+} catch(Exception $e) {
+    echo $e->getMessage();
+}
+
 
