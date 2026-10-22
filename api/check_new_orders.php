@@ -22,24 +22,48 @@ $role     = $_SESSION['role'] ?? '';
 $branchId = (int)($_SESSION['branch_id'] ?? 0);
 $sinceId  = isset($_GET['since_id']) ? (int)$_GET['since_id'] : 0;
 
-// Initial handshake: if since_id <= 0, return current max order ID so we don't alert old orders
+// Handshake: if since_id <= 0, check for recent orders created in the last 15 minutes
 if ($sinceId <= 0) {
     if ($role === 'super_admin') {
-        $stmt = $db->query("SELECT COALESCE(MAX(id), 0) FROM orders WHERE deleted_at IS NULL");
+        $stmtMax = $db->query("SELECT COALESCE(MAX(id), 0) FROM orders WHERE deleted_at IS NULL");
+        $maxId = (int)$stmtMax->fetchColumn();
+
+        $stmtRecent = $db->query("
+            SELECT o.id, o.order_number, o.customer_name, o.total_amount, o.created_at, b.branch_name
+            FROM orders o
+            LEFT JOIN branches b ON o.assigned_branch_id = b.id
+            WHERE o.created_at >= (NOW() - INTERVAL 15 MINUTE) AND o.current_status = 'New' AND o.deleted_at IS NULL
+            ORDER BY o.id ASC
+            LIMIT 5
+        ");
+        $recentOrders = $stmtRecent->fetchAll(PDO::FETCH_ASSOC);
     } else {
-        $stmt = $db->prepare("SELECT COALESCE(MAX(id), 0) FROM orders WHERE assigned_branch_id = :bid AND deleted_at IS NULL");
-        $stmt->execute([':bid' => $branchId]);
+        $stmtMax = $db->prepare("SELECT COALESCE(MAX(id), 0) FROM orders WHERE assigned_branch_id = :bid AND deleted_at IS NULL");
+        $stmtMax->execute([':bid' => $branchId]);
+        $maxId = (int)$stmtMax->fetchColumn();
+
+        $stmtRecent = $db->prepare("
+            SELECT o.id, o.order_number, o.customer_name, o.total_amount, o.created_at, b.branch_name
+            FROM orders o
+            LEFT JOIN branches b ON o.assigned_branch_id = b.id
+            WHERE o.assigned_branch_id = :bid AND o.created_at >= (NOW() - INTERVAL 15 MINUTE) AND o.current_status = 'New' AND o.deleted_at IS NULL
+            ORDER BY o.id ASC
+            LIMIT 5
+        ");
+        $stmtRecent->execute([':bid' => $branchId]);
+        $recentOrders = $stmtRecent->fetchAll(PDO::FETCH_ASSOC);
     }
-    $maxId = (int)$stmt->fetchColumn();
+
     echo json_encode([
         'initialized' => true,
         'latest_id'   => $maxId,
-        'orders'      => []
+        'has_new'     => count($recentOrders) > 0,
+        'orders'      => $recentOrders
     ]);
     exit;
 }
 
-// Fetch new orders with ID > since_id
+// Regular polling: fetch new orders with ID > since_id
 if ($role === 'super_admin') {
     $stmt = $db->prepare("
         SELECT o.id, o.order_number, o.customer_name, o.total_amount, o.created_at, b.branch_name
