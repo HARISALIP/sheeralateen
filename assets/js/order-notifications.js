@@ -3,6 +3,10 @@
  * -------------------------------------------------------------
  * Real-time new order listener with sound and desktop notifications.
  * Works even when the browser tab is minimized or in the background.
+ *
+ * KEY DESIGN: We NEVER auto-reload the page. Every page reload resets
+ * the browser's audio autoplay lock, silencing future alerts. Instead,
+ * we show a clickable banner so the user can manually refresh if needed.
  */
 (function() {
     'use strict';
@@ -11,8 +15,12 @@
     let audioElement = null;
     let audioCtx = null;
     let isUnlocked = false;
+    let pendingRefresh = false; // track if new orders arrived and UI needs refresh
 
-    // Create and preload the HTML5 audio element
+    // -----------------------------------------------------------------------
+    // Audio Setup
+    // -----------------------------------------------------------------------
+
     function setupAudioElement() {
         if (!audioElement) {
             audioElement = document.getElementById('sheera-order-audio');
@@ -20,143 +28,170 @@
                 audioElement = document.createElement('audio');
                 audioElement.id = 'sheera-order-audio';
                 audioElement.preload = 'auto';
-                audioElement.src = '/assets/sounds/order_alert.wav?v=2';
+                audioElement.src = '/assets/sounds/order_alert.wav?v=3';
                 document.body.appendChild(audioElement);
             }
         }
     }
 
-    // Web Audio API Synth as secondary fallback
     function initAudioContext() {
         if (!audioCtx) {
             const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
             if (AudioCtxClass) {
-                audioCtx = new AudioCtxClass();
+                try { audioCtx = new AudioCtxClass(); } catch(e) {}
             }
         }
         if (audioCtx && audioCtx.state === 'suspended') {
-            audioCtx.resume();
+            audioCtx.resume().catch(() => {});
         }
     }
 
-    // Unlock both Audio Element & AudioContext on user interaction
+    // Unlock audio on any user interaction (click, touch, key)
     function unlockAudio() {
         setupAudioElement();
+        initAudioContext();
+
         if (audioElement && !isUnlocked) {
             audioElement.muted = true;
-            const playPromise = audioElement.play();
-            if (playPromise !== undefined) {
-                playPromise.then(() => {
+            const p = audioElement.play();
+            if (p !== undefined) {
+                p.then(() => {
                     audioElement.pause();
                     audioElement.currentTime = 0;
                     audioElement.muted = false;
                     isUnlocked = true;
+                    console.log('[OrderAlerts] Audio unlocked');
                 }).catch(() => {});
             }
         }
-        initAudioContext();
     }
 
-    ['click', 'touchstart', 'keydown'].forEach(evt => {
+    ['click', 'touchstart', 'keydown', 'scroll'].forEach(evt => {
         window.addEventListener(evt, unlockAudio, { once: false, passive: true });
     });
 
-    // Play synthesized bell chime via Web Audio API
+    // -----------------------------------------------------------------------
+    // Sound Player
+    // -----------------------------------------------------------------------
+
+    // Synthesised bell chime via Web Audio API (no external file dependency)
     function playSynthChime() {
         try {
             initAudioContext();
             if (!audioCtx) return;
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
 
-            const chords = [
-                { f: 659.25, t: 0.00, dur: 0.35, vol: 0.40 }, // E5
-                { f: 987.77, t: 0.12, dur: 0.45, vol: 0.45 }, // B5
-                { f: 1318.51, t: 0.28, dur: 0.65, vol: 0.50 } // E6
+            const now = audioCtx.currentTime;
+            const notes = [
+                { f: 659.25, t: 0.00, dur: 0.35, vol: 0.5 },
+                { f: 987.77, t: 0.15, dur: 0.45, vol: 0.55 },
+                { f: 1318.51, t: 0.32, dur: 0.65, vol: 0.6 }
             ];
 
-            [0, 0.90].forEach(delay => {
-                chords.forEach(c => {
-                    const osc = audioCtx.createOscillator();
+            // Play the chime twice with a short gap
+            [0, 0.95].forEach(delay => {
+                notes.forEach(c => {
+                    const osc  = audioCtx.createOscillator();
                     const gain = audioCtx.createGain();
 
                     osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(c.f, audioCtx.currentTime + delay + c.t);
+                    osc.frequency.setValueAtTime(c.f, now + delay + c.t);
 
-                    gain.gain.setValueAtTime(0.0001, audioCtx.currentTime + delay + c.t);
-                    gain.gain.linearRampToValueAtTime(c.vol, audioCtx.currentTime + delay + c.t + 0.02);
-                    gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + delay + c.t + c.dur);
+                    gain.gain.setValueAtTime(0.0001, now + delay + c.t);
+                    gain.gain.linearRampToValueAtTime(c.vol, now + delay + c.t + 0.03);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + c.t + c.dur);
 
                     osc.connect(gain);
                     gain.connect(audioCtx.destination);
-
-                    osc.start(audioCtx.currentTime + delay + c.t);
-                    osc.stop(audioCtx.currentTime + delay + c.t + c.dur + 0.05);
+                    osc.start(now + delay + c.t);
+                    osc.stop(now + delay + c.t + c.dur + 0.05);
                 });
             });
-        } catch(e) {}
+        } catch(e) {
+            console.warn('[OrderAlerts] Synth chime error:', e);
+        }
     }
 
-    // Main sound player: HTML5 Audio first, then synth fallback
     function playOrderSound() {
         setupAudioElement();
+
+        // Always try synth chime first — it uses WebAudio and is more reliable
+        playSynthChime();
+
+        // Also try HTML5 audio (better quality if not blocked)
         if (audioElement) {
             audioElement.currentTime = 0;
             audioElement.muted = false;
-            const p = audioElement.play();
-            if (p !== undefined) {
-                p.catch(() => {
-                    playSynthChime();
-                });
-            }
+            audioElement.play().catch(() => {
+                // HTML5 audio blocked — synth already played above
+            });
         }
-        setTimeout(playSynthChime, 150);
     }
 
-    // Show Desktop / OS Notification (shows even if minimized)
+    // -----------------------------------------------------------------------
+    // Desktop / OS Notifications
+    // -----------------------------------------------------------------------
+
     function showDesktopNotification(title, body, orderId) {
-        if (!('Notification' in window) || Notification.permission !== 'granted') {
-            return;
-        }
+        if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
         try {
-            const options = {
+            const n = new Notification(title, {
                 body: body,
                 icon: '/assets/images/logo.png?v=2',
-                tag: orderId ? ('new-order-' + orderId) : 'test-alert'
-            };
-
-            const n = new Notification(title, options);
+                tag: orderId ? ('order-' + orderId) : 'test-alert',
+                requireInteraction: false
+            });
             n.onclick = function() {
                 window.focus();
                 if (orderId) {
-                    const isManager = window.location.pathname.includes('/manager/');
-                    const targetUrl = (isManager ? '/manager/' : '/admin/') + 'order_details.php?id=' + orderId;
-                    window.location.href = targetUrl;
+                    const base = window.location.pathname.includes('/manager/') ? '/manager/' : '/admin/';
+                    window.location.href = base + 'order_details.php?id=' + orderId;
                 }
                 n.close();
             };
-        } catch (e) {
-            console.warn('[Notifications] Desktop notification error:', e);
+        } catch(e) {
+            console.warn('[OrderAlerts] Desktop notification error:', e);
         }
     }
 
-    // Show persistent top banner inside the dashboard
+    // -----------------------------------------------------------------------
+    // UI: Top Banner
+    // -----------------------------------------------------------------------
+
     function showTopBanner(order) {
         let banner = document.getElementById('new-order-top-banner');
         if (!banner) {
             banner = document.createElement('div');
             banner.id = 'new-order-top-banner';
-            banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:linear-gradient(90deg, #059669, #10b981);color:#fff;padding:12px 20px;text-align:center;font-size:0.95rem;font-weight:600;z-index:9999999;box-shadow:0 4px 20px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;gap:15px;';
+            banner.style.cssText = [
+                'position:fixed', 'top:0', 'left:0', 'right:0',
+                'background:linear-gradient(90deg,#059669,#10b981)',
+                'color:#fff', 'padding:12px 20px', 'text-align:center',
+                'font-size:0.95rem', 'font-weight:600', 'z-index:9999999',
+                'box-shadow:0 4px 20px rgba(0,0,0,0.3)',
+                'display:flex', 'align-items:center', 'justify-content:center', 'gap:15px'
+            ].join(';');
             document.body.appendChild(banner);
         }
+
         const isManager = window.location.pathname.includes('/manager/');
-        const url = (isManager ? '/manager/' : '/admin/') + 'order_details.php?id=' + order.id;
-        banner.innerHTML = '<span>🔔 NEW ORDER RECEIVED: ' + (order.order_number || ('#' + order.id)) + ' &bull; SAR ' + parseFloat(order.total_amount).toFixed(2) + ' (' + (order.branch_name || 'Branch') + ')</span> <a href="' + url + '" style="background:#fff;color:#059669;padding:5px 12px;border-radius:6px;text-decoration:none;font-size:0.85rem;font-weight:700;">View Order</a>';
+        const base = isManager ? '/manager/' : '/admin/';
+        const detailUrl = base + 'order_details.php?id=' + order.id;
+        const ordersUrl = base + 'orders.php';
+        const amount = order.total_amount ? ' &bull; SAR ' + parseFloat(order.total_amount).toFixed(2) : '';
+        const branch = order.branch_name ? ' (' + order.branch_name + ')' : '';
+
+        banner.innerHTML =
+            '<span>🔔 NEW ORDER: ' + (order.order_number || ('#' + order.id)) + amount + branch + '</span>' +
+            '<a href="' + detailUrl + '" style="background:#fff;color:#059669;padding:5px 12px;border-radius:6px;text-decoration:none;font-size:0.85rem;font-weight:700;">View</a>' +
+            '<button onclick="window.location.href=\'' + ordersUrl + '\'" style="background:rgba(255,255,255,0.25);color:#fff;border:1px solid rgba(255,255,255,0.5);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:0.85rem;font-weight:700;">Refresh List</button>' +
+            '<button onclick="document.getElementById(\'new-order-top-banner\').style.display=\'none\'" style="background:transparent;color:#fff;border:none;cursor:pointer;font-size:1.2rem;padding:0 5px;">&times;</button>';
     }
 
-    // Update Topbar Bell Icon State
+    // -----------------------------------------------------------------------
+    // UI: Bell Button
+    // -----------------------------------------------------------------------
+
     function updateBellUI() {
         const bell = document.getElementById('btn-notifications');
         if (!bell) return;
@@ -171,15 +206,14 @@
         }
 
         if (window.Notification && Notification.permission === 'granted') {
-            badge.style.background = '#10b981'; // Green active
-            bell.setAttribute('title', 'Order alerts active! Click to test sound & notification.');
+            badge.style.background = '#10b981';
+            bell.setAttribute('title', 'Alerts active! Click to test sound & notification.');
         } else {
-            badge.style.background = '#f59e0b'; // Amber: needs permission
+            badge.style.background = '#f59e0b';
             bell.setAttribute('title', 'Click to allow notifications & sound alerts');
         }
     }
 
-    // Handle Topbar Bell Click
     function setupBellButton() {
         const bell = document.getElementById('btn-notifications');
         if (!bell) return;
@@ -194,111 +228,163 @@
                     updateBellUI();
                     if (perm === 'granted') {
                         playOrderSound();
-                        showDesktopNotification('🔔 Notifications Enabled!', 'You will now receive sound and desktop alerts for new orders.', null);
+                        showDesktopNotification('🔔 Alerts Enabled!', 'Sound and desktop alerts are now active for new orders.', null);
                         showToast('Notifications & sound alerts enabled!');
+                    } else {
+                        showToast('Permission denied. Only in-page sound alerts will play.');
                     }
                 });
                 return;
             }
 
-            // Test chime & test notification if already granted
+            // Already granted — play test
             playOrderSound();
-            showDesktopNotification('🔔 Notification Test Successful!', 'Sound and desktop alerts are active.', null);
-            showToast('Test chime played! Desktop notification sent.');
+            showDesktopNotification('🔔 Test Notification', 'Sound and desktop alerts are working correctly.', null);
+            showToast('Test complete! Sound & desktop alerts are active.');
         });
     }
 
-    // Toast message
+    // -----------------------------------------------------------------------
+    // UI: Toast
+    // -----------------------------------------------------------------------
+
     function showToast(msg) {
         let toast = document.getElementById('order-notify-toast');
         if (!toast) {
             toast = document.createElement('div');
             toast.id = 'order-notify-toast';
-            toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#1e293b;color:#fff;padding:12px 20px;border-radius:8px;font-size:0.9rem;box-shadow:0 10px 25px rgba(0,0,0,0.25);z-index:999999;transition:all 0.3s;display:flex;align-items:center;gap:10px;';
+            toast.style.cssText = [
+                'position:fixed', 'bottom:24px', 'right:24px',
+                'background:#1e293b', 'color:#fff',
+                'padding:12px 20px', 'border-radius:8px', 'font-size:0.9rem',
+                'box-shadow:0 10px 25px rgba(0,0,0,0.25)', 'z-index:999999',
+                'transition:opacity 0.3s,transform 0.3s',
+                'display:flex', 'align-items:center', 'gap:10px'
+            ].join(';');
             document.body.appendChild(toast);
         }
         toast.innerHTML = '<i class="fa-solid fa-bell" style="color:#10b981;"></i> <span>' + msg + '</span>';
         toast.style.opacity = '1';
         toast.style.transform = 'translateY(0)';
-        setTimeout(() => {
+        clearTimeout(toast._hideTimer);
+        toast._hideTimer = setTimeout(() => {
             toast.style.opacity = '0';
             toast.style.transform = 'translateY(10px)';
         }, 5000);
     }
 
-    // Process new order alert
+    // -----------------------------------------------------------------------
+    // Core: Order Alert Processing
+    // -----------------------------------------------------------------------
+
     function processOrderAlert(order) {
         const oid = parseInt(order.id, 10);
         const storedAlerted = parseInt(localStorage.getItem('sheera_last_alerted_order_id') || '0', 10);
 
-        if (oid > storedAlerted) {
-            try {
-                localStorage.setItem('sheera_last_alerted_order_id', oid);
-            } catch(e) {}
-
-            playOrderSound();
-
-            const title = '🔔 New Order ' + (order.order_number || ('#' + order.id));
-            const body = (order.branch_name ? ('Branch: ' + order.branch_name + '\n') : '') +
-                         (order.total_amount ? ('Amount: SAR ' + parseFloat(order.total_amount).toFixed(2) + '\n') : '') +
-                         (order.customer_name ? ('Customer: ' + order.customer_name) : '');
-
-            showDesktopNotification(title, body, order.id);
-            showTopBanner(order);
-            showToast('New Order Received: ' + (order.order_number || ('#' + order.id)));
-
-            // If on orders list or dashboard, refresh after sound has played (6 seconds)
-            const p = window.location.pathname;
-            if (p.endsWith('/orders.php') || p.endsWith('/dashboard.php') || p.endsWith('/admin/') || p.endsWith('/manager/')) {
-                setTimeout(() => { window.location.reload(); }, 6000);
-            }
+        if (oid <= storedAlerted) {
+            // Already alerted for this order (or an older one)
+            return;
         }
+
+        // Mark as alerted AFTER we've confirmed we'll fire (prevents double-alerts on same ID)
+        try { localStorage.setItem('sheera_last_alerted_order_id', oid); } catch(e) {}
+
+        console.log('[OrderAlerts] New order detected → ID:', oid, order.order_number);
+
+        // 1. Sound
+        playOrderSound();
+
+        // 2. Desktop notification (works when tab is in background/minimized)
+        const title = '🔔 New Order ' + (order.order_number || ('#' + order.id));
+        const body  = [
+            order.branch_name   ? 'Branch: '   + order.branch_name   : null,
+            order.total_amount  ? 'Amount: SAR ' + parseFloat(order.total_amount).toFixed(2) : null,
+            order.customer_name ? 'Customer: ' + order.customer_name : null
+        ].filter(Boolean).join('\n');
+
+        showDesktopNotification(title, body, order.id);
+
+        // 3. In-page banner (no reload — banner has manual "Refresh List" button)
+        showTopBanner(order);
+
+        // 4. Toast
+        showToast('New Order: ' + (order.order_number || ('#' + order.id)));
+
+        // IMPORTANT: We do NOT auto-reload the page here.
+        // Reloading would reset the browser's audio unlock state,
+        // causing the NEXT order's sound to be silenced.
+        // The user can click the "Refresh List" button in the banner.
+        pendingRefresh = true;
     }
 
-    // Polling function
+    // -----------------------------------------------------------------------
+    // Core: Polling
+    // -----------------------------------------------------------------------
+
     function pollNewOrders() {
         const since = (lastOrderId === null) ? 0 : lastOrderId;
 
-        fetch('/api/check_new_orders.php?since_id=' + since, {
+        fetch('/api/check_new_orders.php?since_id=' + since + '&_t=' + Date.now(), {
             cache: 'no-store',
+            credentials: 'same-origin',
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
-        .then(res => res.json())
+        .then(res => {
+            if (res.status === 401) {
+                // Not logged in anymore — stop polling silently
+                console.log('[OrderAlerts] Session expired, polling stopped.');
+                return null;
+            }
+            return res.json();
+        })
         .then(data => {
             if (!data) return;
 
-            // Handle any new orders returned (either on handshake or regular poll)
-            if (data.has_new && Array.isArray(data.orders) && data.orders.length > 0) {
-                data.orders.forEach(order => {
-                    processOrderAlert(order);
-                });
+            // Update our local cursor
+            if (data.latest_id && data.latest_id > 0) {
+                // Only set lastOrderId from handshake (since_id=0) or when new orders arrive.
+                // This prevents the cursor from jumping unexpectedly.
+                if (lastOrderId === null) {
+                    // Initial handshake: set cursor so we don't re-alert on next poll
+                    lastOrderId = data.latest_id;
+                    try { localStorage.setItem('sheera_last_seen_order_id', lastOrderId); } catch(e) {}
+                } else if (data.has_new) {
+                    lastOrderId = data.latest_id;
+                    try { localStorage.setItem('sheera_last_seen_order_id', lastOrderId); } catch(e) {}
+                }
             }
 
-            if (data.latest_id) {
-                lastOrderId = data.latest_id;
-                try {
-                    localStorage.setItem('sheera_last_seen_order_id', lastOrderId);
-                } catch(e) {}
+            // Process new orders from regular polls (NOT handshake)
+            // On the handshake (since=0), we skip alerts to avoid false alarms
+            // on page load/reload. Real detection starts from next poll.
+            if (!data.initialized && data.has_new && Array.isArray(data.orders) && data.orders.length > 0) {
+                data.orders.forEach(order => processOrderAlert(order));
             }
         })
-        .catch(() => {});
+        .catch(err => {
+            // Network error — fail silently, will retry next interval
+            console.warn('[OrderAlerts] Poll error:', err);
+        });
     }
 
+    // -----------------------------------------------------------------------
     // Init
+    // -----------------------------------------------------------------------
+
     function init() {
         setupAudioElement();
         setupBellButton();
         updateBellUI();
 
-        // Request permission on load if not yet determined
+        // Request notification permission automatically if not yet decided
         if ('Notification' in window && Notification.permission === 'default') {
-            Notification.requestPermission().then(() => {
-                updateBellUI();
-            });
+            Notification.requestPermission().then(() => updateBellUI());
         }
 
-        // Initialize polling immediately, then every 8 seconds
+        // First poll: handshake to get current max ID (no alerts fired on this one)
         pollNewOrders();
+
+        // Then poll every 8 seconds for new orders
         setInterval(pollNewOrders, 8000);
     }
 
@@ -307,4 +393,5 @@
     } else {
         init();
     }
+
 })();
