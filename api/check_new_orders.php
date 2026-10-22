@@ -6,6 +6,12 @@
  * Returns new orders for Super Admin (all branches) or
  * Branch Manager (assigned branch only).
  */
+
+// Strip any BOM or whitespace that may have been output before <?php
+// (happens when the file is saved with UTF-8 BOM encoding on Windows)
+while (ob_get_level() > 0) { ob_end_clean(); }
+ob_start();
+
 require_once __DIR__ . '/../core/bootstrap.php';
 
 header('Content-Type: application/json; charset=utf-8');

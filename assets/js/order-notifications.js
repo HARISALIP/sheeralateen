@@ -335,7 +335,18 @@
                 console.log('[OrderAlerts] Session expired, polling stopped.');
                 return null;
             }
-            return res.json();
+            return res.text(); // Use text() so we can strip BOM before parsing
+        })
+        .then(text => {
+            if (!text) return null;
+            // Strip UTF-8 BOM (\uFEFF) if the server accidentally outputs it
+            const clean = text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text;
+            try {
+                return JSON.parse(clean);
+            } catch(e) {
+                console.warn('[OrderAlerts] Poll error:', e, '| Raw:', clean.substring(0, 80));
+                return null;
+            }
         })
         .then(data => {
             if (!data) return;
