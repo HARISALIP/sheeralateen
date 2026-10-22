@@ -20,7 +20,7 @@
                 audioElement = document.createElement('audio');
                 audioElement.id = 'sheera-order-audio';
                 audioElement.preload = 'auto';
-                audioElement.src = '/assets/sounds/order_alert.wav';
+                audioElement.src = '/assets/sounds/order_alert.wav?v=2';
                 document.body.appendChild(audioElement);
             }
         }
@@ -43,7 +43,6 @@
     function unlockAudio() {
         setupAudioElement();
         if (audioElement && !isUnlocked) {
-            // Muted play & immediate pause satisfies browser autoplay policy
             audioElement.muted = true;
             const playPromise = audioElement.play();
             if (playPromise !== undefined) {
@@ -58,7 +57,6 @@
         initAudioContext();
     }
 
-    // Register user gesture listeners to unlock audio
     ['click', 'touchstart', 'keydown'].forEach(evt => {
         window.addEventListener(evt, unlockAudio, { once: false, passive: true });
     });
@@ -103,26 +101,17 @@
     // Main sound player: HTML5 Audio first, then synth fallback
     function playOrderSound() {
         setupAudioElement();
-        let played = false;
-
         if (audioElement) {
             audioElement.currentTime = 0;
             audioElement.muted = false;
             const p = audioElement.play();
             if (p !== undefined) {
-                p.then(() => {
-                    played = true;
-                }).catch(() => {
-                    // Fallback to Web Audio synth if HTML5 audio was restricted
+                p.catch(() => {
                     playSynthChime();
                 });
-            } else {
-                played = true;
             }
         }
-
-        // Also trigger synth after small delay for rich double chime
-        setTimeout(playSynthChime, 100);
+        setTimeout(playSynthChime, 150);
     }
 
     // Show Desktop / OS Notification (shows even if minimized)
@@ -134,7 +123,7 @@
         try {
             const options = {
                 body: body,
-                icon: '/assets/images/logo.png',
+                icon: '/assets/images/logo.png?v=2',
                 tag: orderId ? ('new-order-' + orderId) : 'test-alert'
             };
 
@@ -151,6 +140,20 @@
         } catch (e) {
             console.warn('[Notifications] Desktop notification error:', e);
         }
+    }
+
+    // Show persistent top banner inside the dashboard
+    function showTopBanner(order) {
+        let banner = document.getElementById('new-order-top-banner');
+        if (!banner) {
+            banner = document.createElement('div');
+            banner.id = 'new-order-top-banner';
+            banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:linear-gradient(90deg, #059669, #10b981);color:#fff;padding:12px 20px;text-align:center;font-size:0.95rem;font-weight:600;z-index:9999999;box-shadow:0 4px 20px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;gap:15px;';
+            document.body.appendChild(banner);
+        }
+        const isManager = window.location.pathname.includes('/manager/');
+        const url = (isManager ? '/manager/' : '/admin/') + 'order_details.php?id=' + order.id;
+        banner.innerHTML = '<span>🔔 NEW ORDER RECEIVED: ' + (order.order_number || ('#' + order.id)) + ' &bull; SAR ' + parseFloat(order.total_amount).toFixed(2) + ' (' + (order.branch_name || 'Branch') + ')</span> <a href="' + url + '" style="background:#fff;color:#059669;padding:5px 12px;border-radius:6px;text-decoration:none;font-size:0.85rem;font-weight:700;">View Order</a>';
     }
 
     // Update Topbar Bell Icon State
@@ -220,7 +223,7 @@
         setTimeout(() => {
             toast.style.opacity = '0';
             toast.style.transform = 'translateY(10px)';
-        }, 4500);
+        }, 5000);
     }
 
     // Process new order alert
@@ -241,10 +244,12 @@
                          (order.customer_name ? ('Customer: ' + order.customer_name) : '');
 
             showDesktopNotification(title, body, order.id);
+            showTopBanner(order);
             showToast('New Order Received: ' + (order.order_number || ('#' + order.id)));
 
-            // If on orders.php list, wait 6 seconds (let chime finish) then refresh list
-            if (window.location.pathname.endsWith('/orders.php')) {
+            // If on orders list or dashboard, refresh after sound has played (6 seconds)
+            const p = window.location.pathname;
+            if (p.endsWith('/orders.php') || p.endsWith('/dashboard.php') || p.endsWith('/admin/') || p.endsWith('/manager/')) {
                 setTimeout(() => { window.location.reload(); }, 6000);
             }
         }
@@ -292,9 +297,9 @@
             });
         }
 
-        // Initialize polling immediately, then every 10 seconds
+        // Initialize polling immediately, then every 8 seconds
         pollNewOrders();
-        setInterval(pollNewOrders, 10000);
+        setInterval(pollNewOrders, 8000);
     }
 
     if (document.readyState === 'loading') {

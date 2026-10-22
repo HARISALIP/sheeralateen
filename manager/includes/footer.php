@@ -35,6 +35,6 @@
         }
     });
 </script>
-<script src="/assets/js/order-notifications.js"></script>
+<script src="/assets/js/order-notifications.js?v=<?= time() ?>"></script>
 </body>
 </html>
