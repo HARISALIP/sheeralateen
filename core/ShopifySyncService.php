@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * core/ShopifySyncService.php
  * ---------------------------------------------------------
@@ -111,14 +111,34 @@ class ShopifySyncService
         $financialStatus = $shopifyOrder['financial_status'] ?? 'pending';
         $fulfillmentStatus = $shopifyOrder['fulfillment_status'] ?? 'unfulfilled';
 
+        // 1. Resolve Customer Name (prefer shipping address recipient, then billing, then customer account)
         $customerName = '';
-        $customerEmail = '';
-        $customerPhone = '';
-        if (isset($shopifyOrder['customer'])) {
+        if (!empty($shopifyOrder['shipping_address']['name'])) {
+            $customerName = trim($shopifyOrder['shipping_address']['name']);
+        } elseif (!empty($shopifyOrder['shipping_address']['first_name']) || !empty($shopifyOrder['shipping_address']['last_name'])) {
+            $customerName = trim(($shopifyOrder['shipping_address']['first_name'] ?? '') . ' ' . ($shopifyOrder['shipping_address']['last_name'] ?? ''));
+        } elseif (!empty($shopifyOrder['billing_address']['name'])) {
+            $customerName = trim($shopifyOrder['billing_address']['name']);
+        } elseif (!empty($shopifyOrder['billing_address']['first_name']) || !empty($shopifyOrder['billing_address']['last_name'])) {
+            $customerName = trim(($shopifyOrder['billing_address']['first_name'] ?? '') . ' ' . ($shopifyOrder['billing_address']['last_name'] ?? ''));
+        } elseif (isset($shopifyOrder['customer'])) {
             $customerName = trim(($shopifyOrder['customer']['first_name'] ?? '') . ' ' . ($shopifyOrder['customer']['last_name'] ?? ''));
-            $customerEmail = $shopifyOrder['customer']['email'] ?? '';
-            $customerPhone = $shopifyOrder['customer']['phone'] ?? '';
         }
+
+        // 2. Resolve Customer Phone (prefer shipping address, then billing, then order, then customer)
+        $customerPhone = '';
+        if (!empty($shopifyOrder['shipping_address']['phone'])) {
+            $customerPhone = trim($shopifyOrder['shipping_address']['phone']);
+        } elseif (!empty($shopifyOrder['billing_address']['phone'])) {
+            $customerPhone = trim($shopifyOrder['billing_address']['phone']);
+        } elseif (!empty($shopifyOrder['phone'])) {
+            $customerPhone = trim($shopifyOrder['phone']);
+        } elseif (isset($shopifyOrder['customer']['phone'])) {
+            $customerPhone = trim($shopifyOrder['customer']['phone']);
+        }
+
+        // 3. Resolve Customer Email
+        $customerEmail = $shopifyOrder['email'] ?? ($shopifyOrder['contact_email'] ?? ($shopifyOrder['customer']['email'] ?? ''));
         
         $deliveryAddress = '';
         $deliveryAddressPlain = '';
@@ -136,10 +156,6 @@ class ShopifySyncService
             
             $parts = array_filter(array_values($addressObj));
             $deliveryAddressPlain = implode(', ', $parts);
-            // Fallback phone from shipping address if customer phone is empty
-            if (empty($customerPhone) && !empty($addr['phone'])) {
-                $customerPhone = $addr['phone'];
-            }
         }
 
         // Map Shopify financial status to local payment_status enum
@@ -152,27 +168,72 @@ class ShopifySyncService
         
         $assignedBranchId = null;
 
-        // Fetch fulfillment orders to find the assigned pickup location
-        try {
-            $foResponse = $this->api->getOrderFulfillmentOrders($shopifyId);
-            $fulfillmentOrders = $foResponse['fulfillment_orders'] ?? [];
-            if (!empty($fulfillmentOrders) && isset($fulfillmentOrders[0]['assigned_location_id'])) {
-                $locationId = (int)$fulfillmentOrders[0]['assigned_location_id'];
-                
-                // Find matching branch
-                foreach ($this->getActiveBranches() as $branch) {
-                    if ($branch['shopify_location_id'] === $locationId) {
-                        $assignedBranchId = $branch['id'];
-                        break;
-                    }
+        // Check if the order is explicitly a pickup order via shipping method
+        $isExplicitPickup = false;
+        if (!empty($shopifyOrder['shipping_lines'])) {
+            foreach ($shopifyOrder['shipping_lines'] as $line) {
+                $title = strtolower($line['title'] ?? '');
+                $code  = strtolower($line['code'] ?? '');
+                if (str_contains($title, 'pickup') || str_contains($title, 'pick up') || 
+                    str_contains($title, 'استلام') || str_contains($code, 'pickup')) {
+                    $isExplicitPickup = true;
+                    break;
                 }
             }
-        } catch (Exception $e) {
-            // Log error if unable to fetch fulfillment orders
-            ActivityLogger::log(null, 'shopify_sync_warning', "Could not fetch fulfillment orders for {$orderNumber}: " . $e->getMessage());
         }
 
-        // Fallback: Check note_attributes for cart attributes injected by the store pickup widget
+        // A. If Home Delivery (has delivery address and NOT explicitly pickup):
+        // Automatically assign to the nearest branch based on GPS coordinates
+        if (!$isExplicitPickup && !empty($deliveryAddressPlain)) {
+            $lat = isset($shopifyOrder['shipping_address']['latitude']) && !empty($shopifyOrder['shipping_address']['latitude']) 
+                ? (float)$shopifyOrder['shipping_address']['latitude'] 
+                : null;
+            $lng = isset($shopifyOrder['shipping_address']['longitude']) && !empty($shopifyOrder['shipping_address']['longitude']) 
+                ? (float)$shopifyOrder['shipping_address']['longitude'] 
+                : null;
+
+            if (!$lat || !$lng) {
+                try {
+                    $addressObj = json_decode($deliveryAddress, true) ?: [];
+                    $coords = GeoService::geocodeShopifyAddress($addressObj);
+                    if ($coords) {
+                        $lat = $coords['lat'];
+                        $lng = $coords['lng'];
+                    }
+                } catch (Exception $e) {
+                    ActivityLogger::log(null, 'geocoding_warning', "Geocoding failed for {$orderNumber}: " . $e->getMessage());
+                }
+            }
+
+            if ($lat && $lng) {
+                $nearestId = GeoService::findNearestBranch($this->db, $lat, $lng);
+                if ($nearestId) {
+                    $assignedBranchId = $nearestId;
+                }
+            }
+        }
+
+        // B. If Store Pickup (or if address geocoding did not match any branch):
+        // Check fulfillment orders location ID first
+        if (!$assignedBranchId) {
+            try {
+                $foResponse = $this->api->getOrderFulfillmentOrders($shopifyId);
+                $fulfillmentOrders = $foResponse['fulfillment_orders'] ?? [];
+                if (!empty($fulfillmentOrders) && isset($fulfillmentOrders[0]['assigned_location_id'])) {
+                    $locationId = (int)$fulfillmentOrders[0]['assigned_location_id'];
+                    foreach ($this->getActiveBranches() as $branch) {
+                        if ($branch['shopify_location_id'] === $locationId) {
+                            $assignedBranchId = $branch['id'];
+                            break;
+                        }
+                    }
+                }
+            } catch (Exception $e) {
+                ActivityLogger::log(null, 'shopify_sync_warning', "Could not fetch fulfillment orders for {$orderNumber}: " . $e->getMessage());
+            }
+        }
+
+        // C. Check note_attributes for cart attributes injected by the store pickup widget
         if (!$assignedBranchId && isset($shopifyOrder['note_attributes']) && is_array($shopifyOrder['note_attributes'])) {
             $branchCode = null;
             foreach ($shopifyOrder['note_attributes'] as $attr) {
@@ -189,24 +250,6 @@ class ShopifySyncService
                 if ($branchRow) {
                     $assignedBranchId = $branchRow['id'];
                 }
-            }
-        }
-
-
-        // Last-resort fallback: geocode delivery address → find nearest branch
-        // Only runs if neither Shopify location ID nor Pickup_Store_ID resolved a branch.
-        if (!$assignedBranchId && !empty($deliveryAddressPlain)) {
-            try {
-                $addressObj = json_decode($deliveryAddress, true) ?: [];
-                $coords = GeoService::geocodeShopifyAddress($addressObj);
-                if ($coords) {
-                    $nearestId = GeoService::findNearestBranch($this->db, $coords['lat'], $coords['lng']);
-                    if ($nearestId) {
-                        $assignedBranchId = $nearestId;
-                    }
-                }
-            } catch (Exception $e) {
-                // Geocoding is best-effort — never block order import on failure
             }
         }
 
