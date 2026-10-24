@@ -29,6 +29,7 @@ if ($wl) {
     print_r($p['shipping_lines'] ?? 'NO SHIPPING LINES');
     echo "\n=== FULFILLMENT ORDERS ===\n";
     print_r($p['fulfillments'] ?? 'NO FULFILLMENTS');
+}
 exit;
 
 $stmt = $db->prepare("
