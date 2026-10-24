@@ -3,12 +3,10 @@ require_once __DIR__ . '/core/bootstrap.php';
 $db = Database::getConnection();
 require_once __DIR__ . '/core/GeoService.php';
 
-header('Content-Type: text/plain; charset=utf-8');
-$stmt = $db->query("SELECT id, branch_name, branch_code, routing_keywords FROM branches WHERE routing_keywords IS NOT NULL");
+$stmt = $db->query("SELECT id, order_number, shopify_order_id FROM orders ORDER BY id DESC LIMIT 5");
 $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-foreach ($rows as $r) {
-    echo "{$r['branch_name']} ({$r['branch_code']}): {$r['routing_keywords']}\n";
-}
+header('Content-Type: text/plain; charset=utf-8');
+echo "Orders count: " . count($rows) . "\n";
 exit;
 
 $stmt = $db->prepare("
