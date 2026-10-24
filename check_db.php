@@ -4,20 +4,12 @@ $db = Database::getConnection();
 require_once __DIR__ . '/core/GeoService.php';
 
 header('Content-Type: text/plain; charset=utf-8');
-
-$addressObj = [
-    'address1' => '2779 Al Rabita Al Islamiah, Bani Malik',
-    'city'     => 'Jeddah',
-    'zip'      => '23341',
-    'country'  => 'Saudi Arabia'
-];
-
-$geoCoords = GeoService::geocodeShopifyAddress($addressObj);
-echo "GeoService Geocoded Coords: ";
-print_r($geoCoords);
-
-$lat = $geoCoords['lat'] ?? 21.5385;
-$lng = $geoCoords['lng'] ?? 39.2019;
+$stmt = $db->query("SELECT id, branch_name, branch_code, routing_keywords FROM branches WHERE routing_keywords IS NOT NULL");
+$rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+foreach ($rows as $r) {
+    echo "{$r['branch_name']} ({$r['branch_code']}): {$r['routing_keywords']}\n";
+}
+exit;
 
 $stmt = $db->prepare("
     SELECT id, branch_name, branch_code, address, latitude, longitude,
