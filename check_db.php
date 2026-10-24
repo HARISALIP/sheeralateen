@@ -3,10 +3,31 @@ require_once __DIR__ . '/core/bootstrap.php';
 $db = Database::getConnection();
 require_once __DIR__ . '/core/GeoService.php';
 
-$stmt = $db->query("SELECT id, order_number, shopify_order_id FROM orders ORDER BY id DESC LIMIT 5");
-$rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 header('Content-Type: text/plain; charset=utf-8');
-echo "Orders count: " . count($rows) . "\n";
+
+// 1. Check order #1142 in orders table
+$order = $db->query("SELECT * FROM orders WHERE order_number = '#1142' OR order_number = '1142' LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+echo "=== ORDER RECORD ===\n";
+print_r($order);
+
+// 2. Check webhook_logs for #1142
+$wl = $db->query("SELECT * FROM webhook_logs WHERE topic = 'orders/create' ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+if ($wl) {
+    echo "\n=== WEBHOOK LOG (ID: {$wl['id']}, received: {$wl['received_at']}) ===\n";
+    $p = json_decode($wl['payload'], true);
+    echo "Order name in payload: " . ($p['name'] ?? 'N/A') . "\n";
+    echo "Customer object:\n";
+    print_r($p['customer'] ?? 'NO CUSTOMER');
+    echo "Shipping address object:\n";
+    print_r($p['shipping_address'] ?? 'NO SHIPPING ADDRESS');
+    echo "Billing address object:\n";
+    print_r($p['billing_address'] ?? 'NO BILLING ADDRESS');
+    echo "Email: " . ($p['email'] ?? 'N/A') . "\n";
+    echo "Contact email: " . ($p['contact_email'] ?? 'N/A') . "\n";
+    echo "Phone: " . ($p['phone'] ?? 'N/A') . "\n";
+    echo "Note attributes:\n";
+    print_r($p['note_attributes'] ?? 'NO NOTE ATTRIBUTES');
+}
 exit;
 
 $stmt = $db->prepare("
