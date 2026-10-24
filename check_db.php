@@ -25,9 +25,10 @@ if ($wl) {
     echo "Email: " . ($p['email'] ?? 'N/A') . "\n";
     echo "Contact email: " . ($p['contact_email'] ?? 'N/A') . "\n";
     echo "Phone: " . ($p['phone'] ?? 'N/A') . "\n";
-    echo "Note attributes:\n";
-    print_r($p['note_attributes'] ?? 'NO NOTE ATTRIBUTES');
-}
+    echo "\n=== SHIPPING LINES ===\n";
+    print_r($p['shipping_lines'] ?? 'NO SHIPPING LINES');
+    echo "\n=== FULFILLMENT ORDERS ===\n";
+    print_r($p['fulfillments'] ?? 'NO FULFILLMENTS');
 exit;
 
 $stmt = $db->prepare("
