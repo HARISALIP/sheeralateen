@@ -1,10 +1,23 @@
 <?php
 require_once __DIR__ . '/core/bootstrap.php';
 $db = Database::getConnection();
+require_once __DIR__ . '/core/GeoService.php';
+
 header('Content-Type: text/plain; charset=utf-8');
 
-$lat = 21.5385; // Al Rabita Al Islamiah, Bani Malik / Mishrifah
-$lng = 39.2019;
+$addressObj = [
+    'address1' => '2779 Al Rabita Al Islamiah, Bani Malik',
+    'city'     => 'Jeddah',
+    'zip'      => '23341',
+    'country'  => 'Saudi Arabia'
+];
+
+$geoCoords = GeoService::geocodeShopifyAddress($addressObj);
+echo "GeoService Geocoded Coords: ";
+print_r($geoCoords);
+
+$lat = $geoCoords['lat'] ?? 21.5385;
+$lng = $geoCoords['lng'] ?? 39.2019;
 
 $stmt = $db->prepare("
     SELECT id, branch_name, branch_code, address, latitude, longitude,
