@@ -4,21 +4,21 @@ $db = Database::getConnection();
 
 header('Content-Type: text/plain');
 
-$stmt = $db->query("SELECT payload FROM webhook_logs WHERE payload LIKE '%1148%' ORDER BY id DESC LIMIT 1");
-$payloadStr = $stmt->fetchColumn();
-
-if ($payloadStr) {
-    $p = json_decode($payloadStr, true);
-    echo "Order: {$p['name']}\n";
-    echo "Total: {$p['total_price']}\n";
-    echo "Subtotal: {$p['subtotal_price']}\n";
-    echo "Shipping lines:\n";
-    print_r($p['shipping_lines'] ?? 'None');
-    echo "Total shipping price set:\n";
-    print_r($p['total_shipping_price_set'] ?? 'None');
-} else {
-    echo "No webhook log for 1148\n";
+try {
+    $db->exec("ALTER TABLE orders ADD COLUMN shipping_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER total_amount");
+    echo "Successfully added 'shipping_fee' column to 'orders' table!\n";
+} catch (PDOException $e) {
+    if (strpos($e->getMessage(), 'Duplicate column name') !== false) {
+        echo "Column 'shipping_fee' already exists!\n";
+    } else {
+        echo "Error: " . $e->getMessage() . "\n";
+    }
 }
+
+// Describe orders table to verify
+$stmt = $db->query("SHOW COLUMNS FROM orders LIKE 'shipping_fee'");
+print_r($stmt->fetchAll(PDO::FETCH_ASSOC));
+
 
 
 
