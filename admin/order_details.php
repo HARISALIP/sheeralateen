@@ -286,7 +286,15 @@ function statusBadge($s) {
             
             <div style="display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center;">
                 <strong>Assigned Branch:</strong>
-                <span><?= $order['branch_name'] ? e($order['branch_name']) : '<span class="text-muted">Unassigned</span>' ?></span>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span id="assigned-branch-name"><?= $order['branch_name'] ? e($order['branch_name']) : '<span class="text-muted">Unassigned</span>' ?></span>
+                    <button type="button"
+                            onclick="document.getElementById('modal-change-branch').style.display='flex'"
+                            title="Reassign Branch"
+                            style="background: none; border: 1px solid #cbd5e1; border-radius: 5px; padding: 2px 7px; cursor: pointer; color: #64748b; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 4px; line-height: 1.4;">
+                        <i class="fa-solid fa-pen-to-square" style="font-size: 0.72rem;"></i> Reassign
+                    </button>
+                </div>
             </div>
 
             <div style="display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center;">
@@ -794,10 +802,11 @@ document.getElementById('modal-update-status').addEventListener('click', functio
 
 
 <!-- Modal: Change Branch -->
-<div id="modal-change-branch" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
-    <div class="card" style="width: 100%; max-width: 440px; margin: 20px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+<div id="modal-change-branch" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;"
+     onclick="if(event.target===this) this.style.display='none'">
+    <div class="card" style="width: 100%; max-width: 460px; margin: 20px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
         <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600;">Change Assigned Branch</h3>
+            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600;"><i class="fa-solid fa-code-branch" style="margin-right: 7px; color: #6366f1;"></i>Reassign Branch</h3>
             <button type="button" onclick="document.getElementById('modal-change-branch').style.display='none'" style="background: none; border: none; font-size: 1.25rem; cursor: pointer; color: #94a3b8;">&times;</button>
         </div>
         <form method="POST">
@@ -805,25 +814,34 @@ document.getElementById('modal-update-status').addEventListener('click', functio
                 <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
                 <input type="hidden" name="action" value="update_branch">
                 <input type="hidden" name="order_id" value="<?= $order['id'] ?>">
-                
-                <div class="form-group" style="margin-bottom: 16px;">
-                    <label for="new_branch_id" style="display: block; margin-bottom: 6px; font-size: 0.9rem; font-weight: 500;">Select Branch</label>
+
+                <?php if (!empty($order['leajlak_order_id'])): ?>
+                <div style="background: #fffbeb; border: 1px solid #fcd34d; border-left: 4px solid #f59e0b; border-radius: 6px; padding: 10px 14px; margin-bottom: 14px; font-size: 0.82rem; color: #92400e;">
+                    <strong><i class="fa-solid fa-triangle-exclamation"></i> Heads up:</strong>
+                    This order is already dispatched to Leajlak. Reassigning the branch only affects <em>future</em> status changes (e.g. a re-dispatch). The active Leajlak order will not be automatically updated.
+                </div>
+                <?php else: ?>
+                <div style="background: #f0fdf4; border: 1px solid #86efac; border-left: 4px solid #22c55e; border-radius: 6px; padding: 10px 14px; margin-bottom: 14px; font-size: 0.82rem; color: #166534;">
+                    <strong><i class="fa-solid fa-circle-info"></i> Note:</strong>
+                    When status is changed to <strong>Ready</strong>, the order will be dispatched to Leajlak using the <strong>new branch's Shop ID</strong> — the driver will pick up from that branch.
+                </div>
+                <?php endif; ?>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label for="new_branch_id" style="display: block; margin-bottom: 6px; font-size: 0.9rem; font-weight: 500;">Select New Branch</label>
                     <select name="new_branch_id" id="new_branch_id" class="form-control" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px;" required>
                         <option value="">-- Choose Branch --</option>
                         <?php foreach ($allBranches as $b): ?>
                             <option value="<?= $b['id'] ?>" <?= $order['assigned_branch_id'] == $b['id'] ? 'selected' : '' ?>>
-                                <?= e($b['branch_name']) ?> <?= !empty($b['leajlak_shop_id']) ? '(Shop #' . e($b['leajlak_shop_id']) . ')' : '(No Leajlak ID)' ?>
+                                <?= e($b['branch_name']) ?> <?= !empty($b['leajlak_shop_id']) ? '(Shop #' . e($b['leajlak_shop_id']) . ')' : '⚠ No Leajlak ID' ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
-                <p style="font-size: 0.8rem; color: #64748b; margin: 0;">
-                    Changing the branch will update which store/shop prepares and dispatches this order.
-                </p>
             </div>
             <div class="card-footer" style="display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; background: #f8fafc; border-top: 1px solid #e2e8f0;">
                 <button type="button" class="btn btn-outline" onclick="document.getElementById('modal-change-branch').style.display='none'">Cancel</button>
-                <button type="submit" class="btn btn-primary">Save Branch</button>
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check" style="margin-right: 5px;"></i>Save Branch</button>
             </div>
         </form>
     </div>
