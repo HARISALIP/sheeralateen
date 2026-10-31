@@ -393,10 +393,37 @@ function statusBadge($s) {
                 <span><?= e($order['shopify_order_number']) ?></span>
             </div>
             <?php endif; ?>
+
+            <?php 
+                $itemsSubtotal = 0;
+                foreach ($items as $it) {
+                    $itemsSubtotal += (float)$it['subtotal'];
+                }
+                $shippingFee = isset($order['shipping_fee']) && (float)$order['shipping_fee'] > 0 
+                    ? (float)$order['shipping_fee'] 
+                    : max(0, round((float)$order['total_amount'] - $itemsSubtotal, 2));
+            ?>
+
+            <div style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border-color);">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px; color: var(--text-color); font-size: 0.92rem;">
+                    <span>Items Subtotal:</span>
+                    <span><?= get_setting($db, 'currency_symbol', 'SAR') . ' ' . number_format($itemsSubtotal, 2) ?></span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px; color: var(--text-color); font-size: 0.92rem;">
+                    <span><i class="fa-solid fa-truck" style="margin-right: 6px; color: #64748b;"></i>Shipping Fee:</span>
+                    <span>
+                        <?php if ($shippingFee > 0): ?>
+                            <strong><?= get_setting($db, 'currency_symbol', 'SAR') . ' ' . number_format($shippingFee, 2) ?></strong>
+                        <?php else: ?>
+                            <span style="color: #10b981; font-weight: 600;">Free</span>
+                        <?php endif; ?>
+                    </span>
+                </div>
+            </div>
             
-            <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; font-size: 1.25rem;">
+            <div style="margin-top: 10px; padding-top: 12px; border-top: 1px dashed var(--border-color); display: flex; justify-content: space-between; font-size: 1.25rem;">
                 <strong>Total Amount:</strong>
-                <strong><?= get_setting($db, 'currency_symbol', 'SAR') . ' ' . number_format($order['total_amount'], 2) ?></strong>
+                <strong style="color: #0f172a;"><?= get_setting($db, 'currency_symbol', 'SAR') . ' ' . number_format($order['total_amount'], 2) ?></strong>
             </div>
             
             <?php if ($leajlakFailedLog): ?>
@@ -800,6 +827,26 @@ function statusBadge($s) {
                     <?php endforeach; ?>
                 <?php endif; ?>
             </tbody>
+            <tfoot>
+                <tr style="border-top: 1px solid var(--border-color);">
+                    <td colspan="4" class="text-right" style="padding-top: 12px; color: #64748b; font-weight: 500;">Items Subtotal:</td>
+                    <td class="text-right" style="padding-top: 12px; font-weight: 600;"><?= get_setting($db, 'currency_symbol', 'SAR') . ' ' . number_format($itemsSubtotal, 2) ?></td>
+                </tr>
+                <tr>
+                    <td colspan="4" class="text-right" style="color: #64748b; font-weight: 500;"><i class="fa-solid fa-truck" style="margin-right: 4px;"></i> Shipping Fee:</td>
+                    <td class="text-right" style="font-weight: 600;">
+                        <?php if ($shippingFee > 0): ?>
+                            <?= get_setting($db, 'currency_symbol', 'SAR') . ' ' . number_format($shippingFee, 2) ?>
+                        <?php else: ?>
+                            <span style="color: #10b981;">Free</span>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+                <tr style="border-top: 2px solid var(--border-color); font-size: 1.05rem;">
+                    <td colspan="4" class="text-right" style="font-weight: 700; color: #0f172a;">Grand Total:</td>
+                    <td class="text-right" style="font-weight: 700; color: #0f172a;"><?= get_setting($db, 'currency_symbol', 'SAR') . ' ' . number_format($order['total_amount'], 2) ?></td>
+                </tr>
+            </tfoot>
         </table>
     </div>
 </div>

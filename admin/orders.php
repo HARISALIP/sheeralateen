@@ -309,7 +309,10 @@ function statusBadge($s) {
                         <?= $order['branch_name'] ? e($order['branch_name']) : '<span class="text-muted">Unassigned</span>' ?>
                     </td>
                     <td>
-                        <?= get_setting($db, 'currency_symbol', 'SAR') . ' ' . number_format($order['total_amount'], 2) ?>
+                        <strong><?= get_setting($db, 'currency_symbol', 'SAR') . ' ' . number_format($order['total_amount'], 2) ?></strong>
+                        <?php if (isset($order['shipping_fee']) && (float)$order['shipping_fee'] > 0): ?>
+                            <br><small class="text-muted" title="Shipping Fee"><i class="fa-solid fa-truck" style="font-size: 0.72rem;"></i> +<?= number_format($order['shipping_fee'], 2) ?> ship</small>
+                        <?php endif; ?>
                     </td>
                     <td>
                         <form method="POST" action="orders.php" style="display:inline; margin:0;" class="inline-update-form">

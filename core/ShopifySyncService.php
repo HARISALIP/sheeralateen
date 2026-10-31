@@ -111,6 +111,14 @@ class ShopifySyncService
         $financialStatus = $shopifyOrder['financial_status'] ?? 'pending';
         $fulfillmentStatus = $shopifyOrder['fulfillment_status'] ?? 'unfulfilled';
 
+        // Extract shipping cost / fee from Shopify
+        $shippingFee = 0.00;
+        if (!empty($shopifyOrder['total_shipping_price_set']['shop_money']['amount'])) {
+            $shippingFee = (float) $shopifyOrder['total_shipping_price_set']['shop_money']['amount'];
+        } elseif (!empty($shopifyOrder['shipping_lines'][0]['price'])) {
+            $shippingFee = (float) $shopifyOrder['shipping_lines'][0]['price'];
+        }
+
         // 1. Resolve Customer Name (prefer shipping address recipient, then billing, then customer account)
         $customerName = '';
         if (!empty($shopifyOrder['shipping_address']['name'])) {
@@ -270,6 +278,7 @@ class ShopifySyncService
                         customer_phone = :cphone,
                         delivery_address = :address,
                         total_amount = :total,
+                        shipping_fee = :shipping_fee,
                         payment_status = :pstatus,
                         shopify_financial_status = :s_financial,
                         shopify_fulfillment_status = :s_fulfillment,
@@ -284,6 +293,7 @@ class ShopifySyncService
                     ':cphone' => $customerPhone,
                     ':address' => $deliveryAddress,
                     ':total' => $total,
+                    ':shipping_fee' => $shippingFee,
                     ':pstatus' => $localPaymentStatus,
                     ':s_financial' => $financialStatus,
                     ':s_fulfillment' => $fulfillmentStatus,
@@ -307,12 +317,12 @@ class ShopifySyncService
             INSERT INTO orders (
                 shopify_order_id, shopify_order_number, order_number, 
                 customer_name, customer_email, customer_phone, delivery_address,
-                total_amount, payment_status, shopify_financial_status, shopify_fulfillment_status,
+                total_amount, shipping_fee, payment_status, shopify_financial_status, shopify_fulfillment_status,
                 sync_source, sync_status, shopify_synced_at, current_status, assigned_branch_id, created_at
             ) VALUES (
                 :sid, :snum, :onum,
                 :cname, :cemail, :cphone, :address,
-                :total, :pstatus, :s_financial, :s_fulfillment,
+                :total, :shipping_fee, :pstatus, :s_financial, :s_fulfillment,
                 1, 'synced', NOW(), 'New', :branch_id, :created_at
             )
         ");
@@ -325,6 +335,7 @@ class ShopifySyncService
             ':cphone' => $customerPhone,
             ':address' => $deliveryAddress,
             ':total' => $total,
+            ':shipping_fee' => $shippingFee,
             ':pstatus' => $localPaymentStatus,
             ':s_financial' => $financialStatus,
             ':s_fulfillment' => $fulfillmentStatus,
