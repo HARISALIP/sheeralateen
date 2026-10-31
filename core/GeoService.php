@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * GeoService.php
  * ---------------------------------------------------------
@@ -45,8 +45,19 @@ class GeoService
         $city    = trim($addressObj['city']    ?? '');
         $country = trim($addressObj['country'] ?? 'Saudi Arabia');
 
-        // Build candidate queries from most to least specific
+        $address1 = trim($addressObj['address1'] ?? '');
+
+        // Build candidate queries from most to least specific.
+        // Including address1 (neighbourhood/street) gives Nominatim enough context
+        // to return a precise coordinate instead of a city-level centroid —
+        // which is critical when address1 is in Arabic (e.g. "الجزازات, حي الاجواد").
         $queries = [];
+        if ($address1 && $zip && $city) {
+            $queries[] = "{$address1}, {$zip}, {$city}, {$country}";
+        }
+        if ($address1 && $city) {
+            $queries[] = "{$address1}, {$city}, {$country}";
+        }
         if ($zip && $city) {
             $queries[] = "{$zip}, {$city}, {$country}";
         }
@@ -96,7 +107,7 @@ class GeoService
             'format'          => 'json',
             'limit'           => 1,
             'countrycodes'    => $cc,
-            'accept-language' => 'en',
+            'accept-language' => 'ar,en', // Accept Arabic first so Arabic place names resolve correctly
         ]);
 
         $ch = curl_init($url);
