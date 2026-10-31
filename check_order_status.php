@@ -4,47 +4,48 @@ $db = Database::getConnection();
 
 header('Content-Type: text/plain');
 
-$token = get_setting($db, 'leajlak_api_token', '');
-
-// Test sending an order to Leajlak with id '1147(1)' using shop 17084 (Wadi Marikh - active)
-// Just as a dry test to see if Leajlak accepts '(' and ')' in the id!
-$payload = [
-    'id' => '1147(1)',
-    'shop_id' => '17092',
-    'delivery_details' => [
-        'name' => 'Test Razan',
-        'phone' => '0558577096',
-        'coordinate' => [
-            'latitude' => 21.5433,
-            'longitude' => 39.1728
-        ],
-        'address' => 'Jeddah Test'
-    ],
-    'order' => [
-        'payment_type' => 1,
-        'total' => 73.00,
-        'notes' => 'Test order 1147(1)'
-    ]
+$addressObj = [
+    'address1' => 'الحرازات, حي الاجواد',
+    'address2' => '1',
+    'city' => 'جدة',
+    'province' => '',
+    'zip' => '23466',
+    'country' => 'Saudi Arabia'
 ];
 
-$ch = curl_init('https://app.leajlak.com/api/partner-v2/orders');
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'Content-Type: application/json',
-    'Accept: application/json',
-    'Authorization: Bearer ' . $token
-]);
-$body = curl_exec($ch);
-$code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-curl_close($ch);
+echo "Testing geocoding for:\n";
+print_r($addressObj);
 
-echo "HTTP Code: $code\n";
-echo "Response: $body\n";
+$coords = GeoService::geocodeShopifyAddress($addressObj);
+echo "\nGeocoded Coords:\n";
+print_r($coords);
 
+if ($coords) {
+    echo "\nDistances to all active branches:\n";
+    $stmt = $db->prepare("
+        SELECT id, branch_name, branch_code, latitude, longitude,
+               ROUND(
+                   6371 * ACOS(
+                       COS(RADIANS(:lat))  * COS(RADIANS(latitude))
+                       * COS(RADIANS(longitude) - RADIANS(:lng))
+                       + SIN(RADIANS(:lat2)) * SIN(RADIANS(latitude))
+                   ),
+               2) AS distance_km
+        FROM   branches
+        WHERE  status     = 'active'
+          AND  deleted_at IS NULL
+          AND  latitude   IS NOT NULL
+          AND  longitude  IS NOT NULL
+        ORDER  BY distance_km ASC
+    ");
+    $stmt->execute([':lat' => $coords['lat'], ':lng' => $coords['lng'], ':lat2' => $coords['lat']]);
+    $branches = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($branches as $b) {
+        echo "{$b['branch_name']} ({$b['branch_code']}): {$b['distance_km']} km | Lat: {$b['latitude']}, Lng: {$b['longitude']}\n";
+    }
 
-
-
-
-
+    $nearestId = GeoService::findNearestBranch($db, $coords['lat'], $coords['lng']);
+    echo "\nNearest Branch ID: $nearestId\n";
+} else {
+    echo "\nGeocoding returned NULL!\n";
+}
