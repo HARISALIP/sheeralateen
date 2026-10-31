@@ -50,7 +50,7 @@ class GeoService
         // Build candidate queries from most to least specific.
         // Including address1 (neighbourhood/street) gives Nominatim enough context
         // to return a precise coordinate instead of a city-level centroid —
-        // which is critical when address1 is in Arabic (e.g. "الجزازات, حي الاجواد").
+        // which is critical when address1 is in Arabic (e.g. "الحرازات, حي الاجواد").
         $queries = [];
         if ($address1 && $zip && $city) {
             $queries[] = "{$address1}, {$zip}, {$city}, {$country}";
@@ -58,6 +58,23 @@ class GeoService
         if ($address1 && $city) {
             $queries[] = "{$address1}, {$city}, {$country}";
         }
+
+        // If address1 contains multiple parts (separated by Arabic/English commas, hyphens, slashes),
+        // test each individual district/neighbourhood part with city.
+        // E.g. "الحرازات, حي الاجواد" -> tests "الحرازات, جدة, Saudi Arabia", which resolves directly to Al Harazat!
+        if (!empty($address1)) {
+            $parts = preg_split('/[,،\-\/|]/u', $address1);
+            if (count($parts) > 1) {
+                foreach ($parts as $part) {
+                    $p = trim($part);
+                    if (!empty($p) && mb_strlen($p) >= 3 && !is_numeric($p)) {
+                        $queries[] = "{$p}, {$city}, {$country}";
+                    }
+                }
+            }
+        }
+
+        // Only as fallback when specific neighbourhood searches fail, fall back to postal code / city centroid
         if ($zip && $city) {
             $queries[] = "{$zip}, {$city}, {$country}";
         }

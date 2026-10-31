@@ -4,35 +4,34 @@ $db = Database::getConnection();
 
 header('Content-Type: text/plain');
 
-$lat = 21.4923665;
-$lng = 39.3664168;
+$addressObj = [
+    'address1' => 'الحرازات, حي الاجواد',
+    'address2' => '1',
+    'city' => 'جدة',
+    'province' => '',
+    'zip' => '23466',
+    'country' => 'Saudi Arabia'
+];
 
-echo "Coordinates for Al Harazat: $lat, $lng\n\n";
+echo "Testing GeoService::geocodeShopifyAddress with:\n";
+print_r($addressObj);
 
-$stmt = $db->prepare("
-    SELECT id, branch_name, branch_code, latitude, longitude,
-           ROUND(
-               6371 * ACOS(
-                   COS(RADIANS(:lat))  * COS(RADIANS(latitude))
-                   * COS(RADIANS(longitude) - RADIANS(:lng))
-                   + SIN(RADIANS(:lat2)) * SIN(RADIANS(latitude))
-               ),
-           2) AS distance_km
-    FROM   branches
-    WHERE  status     = 'active'
-      AND  deleted_at IS NULL
-      AND  latitude   IS NOT NULL
-      AND  longitude  IS NOT NULL
-    ORDER  BY distance_km ASC
-");
-$stmt->execute([':lat' => $lat, ':lng' => $lng, ':lat2' => $lat]);
-$branches = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$coords = GeoService::geocodeShopifyAddress($addressObj);
+echo "\nResolved Coordinates:\n";
+print_r($coords);
 
-foreach ($branches as $b) {
-    echo "{$b['branch_name']} ({$b['branch_code']}): {$b['distance_km']} km\n";
+if ($coords) {
+    $nearestId = GeoService::findNearestBranch($db, $coords['lat'], $coords['lng']);
+    
+    $stmt = $db->prepare("SELECT id, branch_name, branch_code FROM branches WHERE id = :id");
+    $stmt->execute([':id' => $nearestId]);
+    $branch = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    echo "\n--> Assigned Nearest Branch:\n";
+    print_r($branch);
+} else {
+    echo "\nFailed to resolve coords\n";
 }
 
-$nearestId = GeoService::findNearestBranch($db, $lat, $lng);
-echo "\n--> Nearest branch ID: $nearestId\n";
 
 
