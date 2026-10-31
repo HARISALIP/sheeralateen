@@ -119,11 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             if (!empty($leajlakCancelWarning)) {
                 flash('warning', 'Order #' . e($orderCheck['order_number']) . ' marked Cancelled locally, but Leajlak Cancel reported: ' . e($leajlakCancelWarning));
             } elseif (!$leajlakSuccess) {
-                if (stripos($leajlakError, 'shop is not active') !== false) {
-                    flash('warning', 'Order #' . e($orderCheck['order_number']) . ' updated, but Leajlak Dispatch FAILED: This branch shop is Inactive in Leajlak. Please activate it in Leajlak portal (Config Access -> Shops).');
-                } else {
-                    flash('warning', 'Order #' . e($orderCheck['order_number']) . ' updated, but Leajlak Dispatch FAILED: ' . e($leajlakError));
-                }
+                flash('warning', 'Order #' . e($orderCheck['order_number']) . ' updated, but Leajlak Dispatch FAILED: ' . e($leajlakError));
             } else {
                 flash('success', 'Order #' . e($orderCheck['order_number']) . ' updated and synced to Shopify.');
             }

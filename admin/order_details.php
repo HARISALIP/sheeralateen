@@ -158,11 +158,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
                     if (!$leajlakResult['success']) {
                         $err = $leajlakResult['error'];
                         ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_order_failed', 'Failed to create Leajlak order: ' . $err, null, $updateOrderId);
-                        if (stripos($err, 'shop is not active') !== false) {
-                            flash('warning', "Branch updated to {$bName}, but Leajlak Dispatch FAILED: Shop #{$branchInfo['leajlak_shop_id']} is marked Inactive in Leajlak. Please activate it in your Leajlak portal under Config Access -> Shops.");
-                        } else {
-                            flash('warning', "Branch updated to {$bName}, but Leajlak Dispatch FAILED: " . $err);
-                        }
+                        flash('warning', "Branch updated to {$bName}, but Leajlak Dispatch FAILED: " . $err);
                     } else {
                         $dspId = $leajlakResult['leajlak_order_id'] ?? null;
                         $db->prepare("UPDATE orders SET current_status = 'Ready', leajlak_order_id = :lid, leajlak_status = 'New Order', leajlak_captain_name = NULL, leajlak_captain_phone = NULL, updated_at = NOW() WHERE id = :id")->execute([':lid' => $dspId, ':id' => $updateOrderId]);
@@ -196,11 +192,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'dispa
             if (!$leajlakResult['success']) {
                 $err = $leajlakResult['error'];
                 ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_order_failed', 'Failed to create Leajlak order: ' . $err, null, $updateOrderId);
-                if (stripos($err, 'shop is not active') !== false) {
-                    flash('error', "Leajlak Dispatch FAILED: Shop #{$orderCheck['leajlak_shop_id']} ({$orderCheck['branch_name']}) is marked Inactive in Leajlak. Please activate this shop in your Leajlak portal (Config Access -> Shops).");
-                } else {
-                    flash('error', "Leajlak Dispatch FAILED: " . $err);
-                }
+                flash('error', "Leajlak Dispatch FAILED: " . $err);
             } else {
                 $dspId = $leajlakResult['leajlak_order_id'] ?? null;
                 $db->prepare("UPDATE orders SET current_status = 'Ready', leajlak_order_id = :lid, leajlak_status = 'New Order', leajlak_captain_name = NULL, leajlak_captain_phone = NULL, updated_at = NOW() WHERE id = :id")->execute([':lid' => $dspId, ':id' => $updateOrderId]);
@@ -407,10 +399,10 @@ function statusBadge($s) {
                 <strong><?= get_setting($db, 'currency_symbol', 'SAR') . ' ' . number_format($order['total_amount'], 2) ?></strong>
             </div>
             
-            <?php if ($leajlakFailedLog && stripos($leajlakFailedLog['description'], 'shop is not active') !== false): ?>
+            <?php if ($leajlakFailedLog): ?>
             <div style="margin-top: 16px; background: #fef2f2; border: 1px solid #fecaca; border-left: 4px solid #ef4444; border-radius: 6px; padding: 12px; font-size: 0.84rem; color: #991b1b;">
-                <strong><i class="fa-solid fa-triangle-exclamation"></i> Notice:</strong>
-                <div>This branch shop is marked <em>Inactive</em> in your Leajlak portal. Make sure to activate it under <strong>Config Access &rarr; Shops</strong> in Leajlak so orders can be dispatched when marked Ready.</div>
+                <strong><i class="fa-solid fa-triangle-exclamation"></i> Leajlak Error:</strong>
+                <div style="margin-top: 4px;"><?= e($leajlakFailedLog['description']) ?></div>
             </div>
             <?php endif; ?>
 
