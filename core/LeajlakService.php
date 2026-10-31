@@ -25,14 +25,38 @@ class LeajlakService
     /**
      * Helper to create an order from a DB row array
      */
-    public function createOrderFromRow(array $order): array
+    public function createOrderFromRow(array $order, ?string $customOrderId = null): array
     {
         $paymentMode = ($order['payment_status'] ?? 'pending') === 'paid'
             ? self::PAYMENT_PREPAID
             : self::PAYMENT_CASH;
 
+        // Auto-calculate retry suffix if not explicitly given
+        $clientOrderId = $customOrderId;
+        if (empty($clientOrderId)) {
+            $baseNumber = preg_replace('/[^0-9A-Za-z]/', '', $order['order_number'] ?? '');
+            
+            $orderId = (int)($order['id'] ?? 0);
+            $prevCreated = 0;
+            if ($orderId > 0) {
+                try {
+                    $stmt = $this->db->prepare("SELECT COUNT(*) FROM activity_logs WHERE order_id = :oid AND action = 'leajlak_order_created'");
+                    $stmt->execute([':oid' => $orderId]);
+                    $prevCreated = (int)$stmt->fetchColumn();
+                } catch (\Throwable $e) {}
+            }
+
+            // If previously created or already has Leajlak ID or was cancelled in Leajlak, append retry suffix
+            if ($prevCreated > 0 || !empty($order['leajlak_order_id']) || in_array(strtolower($order['leajlak_status'] ?? ''), ['canceled', 'cancelled'])) {
+                $attempt = $prevCreated > 0 ? $prevCreated : 1;
+                $clientOrderId = "{$baseNumber}({$attempt})";
+            } else {
+                $clientOrderId = $baseNumber;
+            }
+        }
+
         return $this->createOrder(
-            $order['order_number'],
+            $clientOrderId,
             $order['customer_phone']   ?? '',
             $order['delivery_address'] ?? '',
             (float) ($order['total_amount'] ?? 0),
@@ -82,7 +106,7 @@ class LeajlakService
         }
 
         $payload = [
-            'id' => preg_replace('/[^A-Za-z0-9]/', '', $clientOrderId),
+            'id' => preg_replace('/[^A-Za-z0-9()#_-]/', '', $clientOrderId),
             'shop_id' => $shopId ?: ($this->baseUrl === self::STAGING_URL ? '821017856' : '17081'), // default fallback shop ID
             'delivery_details' => [
                 'name' => $customerName ?: 'Customer',

@@ -131,15 +131,80 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'updat
     }
     $updateOrderId = (int)($_POST['order_id'] ?? 0);
     $newBranchId   = (int)($_POST['new_branch_id'] ?? 0);
+    $dispatchNow   = !empty($_POST['dispatch_immediately']);
+
     if ($updateOrderId > 0 && $newBranchId > 0) {
-        $bCheck = $db->prepare("SELECT branch_name FROM branches WHERE id = :id AND deleted_at IS NULL");
+        $bCheck = $db->prepare("SELECT branch_name, leajlak_shop_id FROM branches WHERE id = :id AND deleted_at IS NULL");
         $bCheck->execute([':id' => $newBranchId]);
-        $bName = $bCheck->fetchColumn();
-        if ($bName) {
+        $branchInfo = $bCheck->fetch();
+        if ($branchInfo) {
+            $bName = $branchInfo['branch_name'];
             $stmtU = $db->prepare("UPDATE orders SET assigned_branch_id = :bid, updated_at = NOW() WHERE id = :id");
             $stmtU->execute([':bid' => $newBranchId, ':id' => $updateOrderId]);
             ActivityLogger::log($_SESSION['user_id'] ?? null, 'order_branch_reassigned', "Branch reassigned to " . $bName, null, $updateOrderId);
             flash('success', "Branch reassigned to {$bName} successfully.");
+
+            if ($dispatchNow) {
+                // Fetch full updated order row
+                $stmtFull = $db->prepare("SELECT o.*, b.leajlak_shop_id, b.branch_name FROM orders o LEFT JOIN branches b ON o.assigned_branch_id = b.id WHERE o.id = :id");
+                $stmtFull->execute([':id' => $updateOrderId]);
+                $freshOrder = $stmtFull->fetch();
+
+                if ($freshOrder) {
+                    $leajlak = new LeajlakService($db);
+                    $leajlakResult = $leajlak->createOrderFromRow($freshOrder);
+                    if (!$leajlakResult['success']) {
+                        $err = $leajlakResult['error'];
+                        ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_order_failed', 'Failed to create Leajlak order: ' . $err, null, $updateOrderId);
+                        if (stripos($err, 'shop is not active') !== false) {
+                            flash('warning', "Branch updated to {$bName}, but Leajlak Dispatch FAILED: Shop #{$branchInfo['leajlak_shop_id']} is marked Inactive in Leajlak. Please activate it in your Leajlak portal under Config Access -> Shops.");
+                        } else {
+                            flash('warning', "Branch updated to {$bName}, but Leajlak Dispatch FAILED: " . $err);
+                        }
+                    } else {
+                        $dspId = $leajlakResult['leajlak_order_id'] ?? null;
+                        $db->prepare("UPDATE orders SET current_status = 'Ready', leajlak_order_id = :lid, leajlak_status = 'New Order', leajlak_captain_name = NULL, leajlak_captain_phone = NULL, updated_at = NOW() WHERE id = :id")->execute([':lid' => $dspId, ':id' => $updateOrderId]);
+                        ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_order_created', 'Leajlak order created: ' . ($dspId ?: ''), null, $updateOrderId);
+                        flash('success', "Branch reassigned to {$bName} AND dispatched to Leajlak successfully!");
+                    }
+                }
+            }
+        }
+    }
+    header('Location: order_details.php?id=' . $updateOrderId);
+    exit;
+}
+
+// Handle manual dispatch to Leajlak
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'dispatch_leajlak') {
+    if (!csrf_verify($_POST['csrf_token'] ?? '')) {
+        flash('error', 'Security check failed. Please try again.');
+        header('Location: order_details.php?id=' . (int)($_POST['order_id'] ?? 0));
+        exit;
+    }
+    $updateOrderId = (int)($_POST['order_id'] ?? 0);
+    if ($updateOrderId > 0) {
+        $stmt = $db->prepare("SELECT o.*, b.branch_name, b.leajlak_shop_id FROM orders o LEFT JOIN branches b ON o.assigned_branch_id = b.id WHERE o.id = :id");
+        $stmt->execute([':id' => $updateOrderId]);
+        $orderCheck = $stmt->fetch();
+        
+        if ($orderCheck) {
+            $leajlak = new LeajlakService($db);
+            $leajlakResult = $leajlak->createOrderFromRow($orderCheck);
+            if (!$leajlakResult['success']) {
+                $err = $leajlakResult['error'];
+                ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_order_failed', 'Failed to create Leajlak order: ' . $err, null, $updateOrderId);
+                if (stripos($err, 'shop is not active') !== false) {
+                    flash('error', "Leajlak Dispatch FAILED: Shop #{$orderCheck['leajlak_shop_id']} ({$orderCheck['branch_name']}) is marked Inactive in Leajlak. Please activate this shop in your Leajlak portal (Config Access -> Shops).");
+                } else {
+                    flash('error', "Leajlak Dispatch FAILED: " . $err);
+                }
+            } else {
+                $dspId = $leajlakResult['leajlak_order_id'] ?? null;
+                $db->prepare("UPDATE orders SET current_status = 'Ready', leajlak_order_id = :lid, leajlak_status = 'New Order', leajlak_captain_name = NULL, leajlak_captain_phone = NULL, updated_at = NOW() WHERE id = :id")->execute([':lid' => $dspId, ':id' => $updateOrderId]);
+                ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_order_created', 'Leajlak order created: ' . ($dspId ?: ''), null, $updateOrderId);
+                flash('success', "Order successfully dispatched to Leajlak for {$orderCheck['branch_name']}!");
+            }
         }
     }
     header('Location: order_details.php?id=' . $updateOrderId);
@@ -187,6 +252,17 @@ if ($order) {
     $lastLogStmt->execute([':oid' => $order['id']]);
     $leajlakFailedLog = $lastLogStmt->fetch();
 }
+
+// Known inactive Leajlak shops
+$leajlakInactiveShopIds = [17088, 17089, 17090, 17091, 17092, 17093, 17094, 17095, 17096, 17099, 17100];
+
+// Calculate next Leajlak Client ID attempt (e.g. 1147 or 1147(1))
+$baseNum = preg_replace('/[^0-9A-Za-z]/', '', $order['order_number'] ?? '');
+$prevLogsStmt = $db->prepare("SELECT COUNT(*) FROM activity_logs WHERE order_id = :oid AND action = 'leajlak_order_created'");
+$prevLogsStmt->execute([':oid' => $order['id']]);
+$prevCreatedCount = (int)$prevLogsStmt->fetchColumn();
+$nextAttemptNum = $prevCreatedCount > 0 ? $prevCreatedCount : (!empty($order['leajlak_order_id']) || in_array(strtolower($order['leajlak_status'] ?? ''), ['canceled', 'cancelled']) ? 1 : 0);
+$nextDispatchId = $nextAttemptNum > 0 ? "{$baseNum}({$nextAttemptNum})" : $baseNum;
 
 // Fetch all active branches for branch reassignment
 $allBranches = $db->query("SELECT id, branch_name, leajlak_shop_id FROM branches WHERE deleted_at IS NULL ORDER BY branch_name ASC")->fetchAll();
@@ -329,7 +405,29 @@ function statusBadge($s) {
                 <strong><?= get_setting($db, 'currency_symbol', 'SAR') . ' ' . number_format($order['total_amount'], 2) ?></strong>
             </div>
             
-            <div style="margin-top: 16px; padding-top: 16px; display: flex; justify-content: flex-end;">
+            <?php if ($leajlakFailedLog): ?>
+            <div style="margin-top: 16px; background: #fef2f2; border: 1px solid #fecaca; border-left: 4px solid #ef4444; border-radius: 6px; padding: 12px; font-size: 0.84rem; color: #991b1b;">
+                <strong><i class="fa-solid fa-triangle-exclamation"></i> Leajlak Error:</strong>
+                <div><?= e($leajlakFailedLog['description']) ?></div>
+                <?php if (stripos($leajlakFailedLog['description'], 'shop is not active') !== false): ?>
+                    <div style="margin-top: 6px; font-size: 0.8rem; color: #7f1d1d;">
+                        👉 <strong>Action Required:</strong> Harasath shop is marked <em>Inactive</em> in your Leajlak portal. Log in to <a href="https://app.leajlak.com/orders-client" target="_blank" style="text-decoration: underline; font-weight: 700; color: #991b1b;">Leajlak Portal</a> &rarr; <strong>Config Access &rarr; Shops</strong> &rarr; switch Harasath to <strong>Active</strong>. Then click <em>Send to Leajlak</em> below.
+                    </div>
+                <?php endif; ?>
+            </div>
+            <?php endif; ?>
+
+            <div style="margin-top: 16px; padding-top: 16px; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap;">
+                <?php if ($order['current_status'] === 'Ready' || in_array(strtolower($order['leajlak_status'] ?? ''), ['canceled', 'cancelled']) || $leajlakFailedLog): ?>
+                    <form method="POST" style="margin: 0;" onsubmit="return confirm('Send order to Leajlak as client ID #<?= $nextDispatchId ?>?');">
+                        <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
+                        <input type="hidden" name="action" value="dispatch_leajlak">
+                        <input type="hidden" name="order_id" value="<?= $order['id'] ?>">
+                        <button type="submit" class="btn btn-primary" style="background: #10b981; border-color: #10b981; display: inline-flex; align-items: center; gap: 6px;">
+                            <i class="fa-solid fa-paper-plane"></i> Send to Leajlak (#<?= e($nextDispatchId) ?>)
+                        </button>
+                    </form>
+                <?php endif; ?>
                 <button class="btn btn-outline btn-update-status" 
                         data-id="<?= $order['id'] ?>"
                         data-number="<?= e($order['order_number']) ?>"
@@ -831,12 +929,21 @@ document.getElementById('modal-update-status').addEventListener('click', functio
                     <label for="new_branch_id" style="display: block; margin-bottom: 6px; font-size: 0.9rem; font-weight: 500;">Select New Branch</label>
                     <select name="new_branch_id" id="new_branch_id" class="form-control" style="width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px;" required>
                         <option value="">-- Choose Branch --</option>
-                        <?php foreach ($allBranches as $b): ?>
+                        <?php foreach ($allBranches as $b): 
+                            $isShopInactive = !empty($b['leajlak_shop_id']) && in_array((int)$b['leajlak_shop_id'], $leajlakInactiveShopIds);
+                        ?>
                             <option value="<?= $b['id'] ?>" <?= $order['assigned_branch_id'] == $b['id'] ? 'selected' : '' ?>>
-                                <?= e($b['branch_name']) ?> <?= !empty($b['leajlak_shop_id']) ? '(Shop #' . e($b['leajlak_shop_id']) . ')' : '⚠ No Leajlak ID' ?>
+                                <?= e($b['branch_name']) ?> <?= !empty($b['leajlak_shop_id']) ? '(Shop #' . e($b['leajlak_shop_id']) . ($isShopInactive ? ' - ⚠️ Inactive in Leajlak' : ' - Active') . ')' : '⚠ No Leajlak ID' ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
+                </div>
+
+                <div style="margin-top: 14px; padding: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 500; color: #1e293b; margin: 0;">
+                        <input type="checkbox" name="dispatch_immediately" value="1" <?= $order['current_status'] === 'Ready' ? 'checked' : '' ?> style="width: 16px; height: 16px;">
+                        <span>Immediately dispatch order to Leajlak as <strong>#<?= e($nextDispatchId) ?></strong></span>
+                    </label>
                 </div>
             </div>
             <div class="card-footer" style="display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; background: #f8fafc; border-top: 1px solid #e2e8f0;">
