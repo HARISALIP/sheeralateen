@@ -2,36 +2,11 @@
 require_once __DIR__ . '/core/bootstrap.php';
 $db = Database::getConnection();
 
-header('Content-Type: text/plain');
+$stmt = $db->query("SELECT payment_status FROM orders WHERE order_number = '#1100'");
+$order = $stmt->fetch(PDO::FETCH_ASSOC);
 
-$addressObj = [
-    'address1' => 'الحرازات, حي الاجواد',
-    'address2' => '1',
-    'city' => 'جدة',
-    'province' => '',
-    'zip' => '23466',
-    'country' => 'Saudi Arabia'
-];
+print_r($order);
 
-echo "Testing GeoService::geocodeShopifyAddress with:\n";
-print_r($addressObj);
-
-$coords = GeoService::geocodeShopifyAddress($addressObj);
-echo "\nResolved Coordinates:\n";
-print_r($coords);
-
-if ($coords) {
-    $nearestId = GeoService::findNearestBranch($db, $coords['lat'], $coords['lng']);
-    
-    $stmt = $db->prepare("SELECT id, branch_name, branch_code FROM branches WHERE id = :id");
-    $stmt->execute([':id' => $nearestId]);
-    $branch = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    echo "\n--> Assigned Nearest Branch:\n";
-    print_r($branch);
-} else {
-    echo "\nFailed to resolve coords\n";
-}
 
 
 
