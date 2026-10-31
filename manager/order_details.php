@@ -31,11 +31,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $validPaymentStatuses = ['pending', 'paid', 'failed', 'refunded', 'partially_paid', 'partially_refunded', 'unpaid'];
     
     if ($updateOrderId > 0 && in_array($newStatus, $validStatuses) && in_array($newPaymentStatus, $validPaymentStatuses)) {
-        $stmt = $db->prepare("SELECT o.order_number, o.shopify_order_id, o.current_status, o.payment_status, o.customer_phone, o.delivery_address, o.total_amount, b.leajlak_shop_id, o.customer_name, o.customer_email, o.leajlak_order_id FROM orders o LEFT JOIN branches b ON o.assigned_branch_id = b.id WHERE o.id = :id AND o.assigned_branch_id = :bid");
+        $stmt = $db->prepare("SELECT o.order_number, o.shopify_order_id, o.current_status, o.payment_status, o.customer_phone, o.delivery_address, o.total_amount, b.leajlak_shop_id, o.customer_name, o.customer_email, o.leajlak_order_id, o.leajlak_status FROM orders o LEFT JOIN branches b ON o.assigned_branch_id = b.id WHERE o.id = :id AND o.assigned_branch_id = :bid");
         $stmt->execute([':id' => $updateOrderId, ':bid' => $branchId]);
         $orderCheck = $stmt->fetch();
         
-        if ($orderCheck && ($orderCheck['current_status'] !== $newStatus || $orderCheck['payment_status'] !== $newPaymentStatus)) {
+        $shouldUpdate = $orderCheck && ($orderCheck['current_status'] !== $newStatus || $orderCheck['payment_status'] !== $newPaymentStatus || ($newStatus === 'Ready' && in_array(strtolower($orderCheck['leajlak_status'] ?? ''), ['canceled', 'cancelled'])));
+
+        if ($shouldUpdate) {
             $update = $db->prepare("UPDATE orders SET current_status = :status, payment_status = :pstatus, updated_at = NOW() WHERE id = :id");
             $update->execute([':status' => $newStatus, ':pstatus' => $newPaymentStatus, ':id' => $updateOrderId]);
             
@@ -54,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $leajlakError = '';
             $leajlakCancelWarning = '';
 
-            if ($orderCheck['current_status'] !== 'Ready' && $newStatus === 'Ready') {
+            if ($newStatus === 'Ready' && ($orderCheck['current_status'] !== 'Ready' || in_array(strtolower($orderCheck['leajlak_status'] ?? ''), ['canceled', 'cancelled']))) {
                 $leajlak = new LeajlakService($db);
                 $leajlakResult = $leajlak->createOrderFromRow($orderCheck);
                 if (!$leajlakResult['success']) {

@@ -26,11 +26,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $validPaymentStatuses = ['pending', 'paid', 'failed', 'refunded', 'partially_paid', 'partially_refunded', 'unpaid'];
     
     if ($updateOrderId > 0 && in_array($newStatus, $validStatuses) && in_array($newPaymentStatus, $validPaymentStatuses)) {
-        $stmt = $db->prepare("SELECT o.order_number, o.shopify_order_id, o.current_status, o.payment_status, o.customer_phone, o.delivery_address, o.total_amount, b.leajlak_shop_id, o.customer_name, o.customer_email, o.leajlak_order_id FROM orders o LEFT JOIN branches b ON o.assigned_branch_id = b.id WHERE o.id = :id");
+        $stmt = $db->prepare("SELECT o.order_number, o.shopify_order_id, o.current_status, o.payment_status, o.customer_phone, o.delivery_address, o.total_amount, b.leajlak_shop_id, o.customer_name, o.customer_email, o.leajlak_order_id, o.leajlak_status FROM orders o LEFT JOIN branches b ON o.assigned_branch_id = b.id WHERE o.id = :id");
         $stmt->execute([':id' => $updateOrderId]);
         $orderCheck = $stmt->fetch();
         
-        if ($orderCheck && ($orderCheck['current_status'] !== $newStatus || $orderCheck['payment_status'] !== $newPaymentStatus)) {
+        $shouldUpdate = $orderCheck && ($orderCheck['current_status'] !== $newStatus || $orderCheck['payment_status'] !== $newPaymentStatus || ($newStatus === 'Ready' && in_array(strtolower($orderCheck['leajlak_status'] ?? ''), ['canceled', 'cancelled'])));
+
+        if ($shouldUpdate) {
             $update = $db->prepare("UPDATE orders SET current_status = :status, payment_status = :pstatus, updated_at = NOW() WHERE id = :id");
             $update->execute([':status' => $newStatus, ':pstatus' => $newPaymentStatus, ':id' => $updateOrderId]);
             
@@ -44,12 +46,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 ]);
             }
             
-                        // 2.5 Trigger Leajlak Delivery if moved to 'Ready' or Cancel if moved to 'Cancelled'
+            // 2.5 Trigger Leajlak Delivery if moved to 'Ready' or if resending when cancelled
             $leajlakSuccess = true;
             $leajlakError = '';
             $leajlakCancelWarning = '';
 
-            if ($orderCheck['current_status'] !== 'Ready' && $newStatus === 'Ready') {
+            if ($newStatus === 'Ready' && ($orderCheck['current_status'] !== 'Ready' || in_array(strtolower($orderCheck['leajlak_status'] ?? ''), ['canceled', 'cancelled']))) {
                 $leajlak = new LeajlakService($db);
                 $leajlakResult = $leajlak->createOrderFromRow($orderCheck);
                 if (!$leajlakResult['success']) {
@@ -405,29 +407,14 @@ function statusBadge($s) {
                 <strong><?= get_setting($db, 'currency_symbol', 'SAR') . ' ' . number_format($order['total_amount'], 2) ?></strong>
             </div>
             
-            <?php if ($leajlakFailedLog): ?>
+            <?php if ($leajlakFailedLog && stripos($leajlakFailedLog['description'], 'shop is not active') !== false): ?>
             <div style="margin-top: 16px; background: #fef2f2; border: 1px solid #fecaca; border-left: 4px solid #ef4444; border-radius: 6px; padding: 12px; font-size: 0.84rem; color: #991b1b;">
-                <strong><i class="fa-solid fa-triangle-exclamation"></i> Leajlak Error:</strong>
-                <div><?= e($leajlakFailedLog['description']) ?></div>
-                <?php if (stripos($leajlakFailedLog['description'], 'shop is not active') !== false): ?>
-                    <div style="margin-top: 6px; font-size: 0.8rem; color: #7f1d1d;">
-                        👉 <strong>Action Required:</strong> Harasath shop is marked <em>Inactive</em> in your Leajlak portal. Log in to <a href="https://app.leajlak.com/orders-client" target="_blank" style="text-decoration: underline; font-weight: 700; color: #991b1b;">Leajlak Portal</a> &rarr; <strong>Config Access &rarr; Shops</strong> &rarr; switch Harasath to <strong>Active</strong>. Then click <em>Send to Leajlak</em> below.
-                    </div>
-                <?php endif; ?>
+                <strong><i class="fa-solid fa-triangle-exclamation"></i> Notice:</strong>
+                <div>This branch shop is marked <em>Inactive</em> in your Leajlak portal. Make sure to activate it under <strong>Config Access &rarr; Shops</strong> in Leajlak so orders can be dispatched when marked Ready.</div>
             </div>
             <?php endif; ?>
 
-            <div style="margin-top: 16px; padding-top: 16px; display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap;">
-                <?php if ($order['current_status'] === 'Ready' || in_array(strtolower($order['leajlak_status'] ?? ''), ['canceled', 'cancelled']) || $leajlakFailedLog): ?>
-                    <form method="POST" style="margin: 0;" onsubmit="return confirm('Send order to Leajlak as client ID #<?= $nextDispatchId ?>?');">
-                        <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
-                        <input type="hidden" name="action" value="dispatch_leajlak">
-                        <input type="hidden" name="order_id" value="<?= $order['id'] ?>">
-                        <button type="submit" class="btn btn-primary" style="background: #10b981; border-color: #10b981; display: inline-flex; align-items: center; gap: 6px;">
-                            <i class="fa-solid fa-paper-plane"></i> Send to Leajlak (#<?= e($nextDispatchId) ?>)
-                        </button>
-                    </form>
-                <?php endif; ?>
+            <div style="margin-top: 16px; padding-top: 16px; display: flex; justify-content: flex-end;">
                 <button class="btn btn-outline btn-update-status" 
                         data-id="<?= $order['id'] ?>"
                         data-number="<?= e($order['order_number']) ?>"
