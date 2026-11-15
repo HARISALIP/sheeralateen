@@ -22,7 +22,7 @@ ini_set('session.gc_maxlifetime', (string) $sessionLifetime);
 
 if (session_status() === PHP_SESSION_NONE) {
     session_set_cookie_params([
-        'lifetime' => $hasRemember ? $sessionLifetime : 0,
+        'lifetime' => $sessionLifetime,
         'path'     => '/',
         'secure'   => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
         'httponly' => true,

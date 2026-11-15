@@ -19,7 +19,7 @@ class Auth
      * Attempt to log a user in, restricted to a specific role.
      * Returns the user row on success, or false on failure.
      */
-    public function attemptLogin(string $email, string $password, ?string $requiredRole = null, bool $remember = false): array|false
+    public function attemptLogin(string $email, string $password, ?string $requiredRole = null, bool $remember = true): array|false
     {
         $sql = "SELECT * FROM users WHERE email = :email AND deleted_at IS NULL LIMIT 1";
         $params = [':email' => $email];
@@ -118,7 +118,8 @@ class Auth
             return false;
         }
 
-        $parts = explode(':', $_COOKIE['bms_remember'], 2);
+        $cookieVal = urldecode($_COOKIE['bms_remember']);
+        $parts = explode(':', $cookieVal, 2);
         if (count($parts) !== 2) {
             self::clearRememberCookie();
             return false;

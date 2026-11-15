@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $email    = trim($_POST['email'] ?? '');
         $password = $_POST['password'] ?? '';
-        $remember = !empty($_POST['remember']);
+        $remember = true; // Always persist login session for BMS users
 
         if ($email === '' || $password === '') {
             $error = 'Please enter both email and password.';
