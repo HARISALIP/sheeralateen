@@ -1,13 +1,7 @@
 -- ============================================================
 -- Migration: Add GPS Coordinates to Branches
--- Run once in phpMyAdmin on Hostinger
--- ============================================================
--- Adds latitude & longitude columns, then seeds approximate
--- coordinates for all 28 active Sheeralateen branches.
--- Coordinates are based on known district locations across
--- Jeddah, Makkah, Jumoom, and Asfan.
--- Fine-tune any coordinate by opening Google Maps,
--- right-clicking the exact branch entrance → "Copy coordinates".
+-- Compatible with MySQL 5.7+ / MariaDB (Hostinger phpMyAdmin)
+-- Exact coordinates extracted from official Google Maps URLs
 -- ============================================================
 
 -- STEP 1: Add coordinate columns (idempotent — won't error if already added)
@@ -20,99 +14,34 @@ ALTER TABLE branches
     ADD INDEX IF NOT EXISTS idx_branch_location (latitude, longitude);
 
 -- ============================================================
--- STEP 2: Seed approximate coordinates per branch
--- Source: district-level Google Maps lookups
+-- STEP 2: Seed exact coordinates per branch from Google Maps
 -- ============================================================
 
--- Jeddah — Al Ajaweed (Al Ajaweed district, east Jeddah)
-UPDATE branches SET latitude = 21.5433, longitude = 39.1728 WHERE branch_code = 'ALAJAWEED';
-
--- Jeddah — Al Qarnia (Al Qurniyah district)
-UPDATE branches SET latitude = 21.4908, longitude = 39.2225 WHERE branch_code = 'ALQARNIA';
-
--- Jeddah — Al Samir 2 (Al Samir district)
-UPDATE branches SET latitude = 21.5169, longitude = 39.1883 WHERE branch_code = 'ALSAMIR2';
-
--- Jeddah — Al Samir 3 (Al Samir district, nearby)
-UPDATE branches SET latitude = 21.5210, longitude = 39.1855 WHERE branch_code = 'ALSAMIR3';
-
--- Jeddah — Al-Naseem (Al Naseem district, east)
-UPDATE branches SET latitude = 21.4975, longitude = 39.2347 WHERE branch_code = 'ALNASEEM';
-
--- Jeddah — Al-Reheli (Al Rehily district, north)
-UPDATE branches SET latitude = 21.5628, longitude = 39.1543 WHERE branch_code = 'ALREHELI';
-
--- Bahra (on the Jeddah–Makkah highway, ~30 km east of Jeddah)
-UPDATE branches SET latitude = 21.5831, longitude = 39.4119 WHERE branch_code = 'BAHRA';
-
--- Jeddah — Fadeylah (Al Faisaliah / Fadeylah district, south)
-UPDATE branches SET latitude = 21.4751, longitude = 39.2289 WHERE branch_code = 'FADEYLAH';
-
--- Jeddah — Hamdaniya (Hamdan district, central)
-UPDATE branches SET latitude = 21.5547, longitude = 39.1822 WHERE branch_code = 'HAMDANIYA';
-
--- Jeddah — Harasath 1 (Al Harasath district)
-UPDATE branches SET latitude = 21.5384, longitude = 39.1756 WHERE branch_code = 'HARASATH1';
-
--- Jeddah — Harasath 2 (Al Harasath district, nearby)
-UPDATE branches SET latitude = 21.5401, longitude = 39.1790 WHERE branch_code = 'HARASATH2';
-
--- Jeddah — Khuwaisa-2 (Al Khuwaiz district, north-west)
-UPDATE branches SET latitude = 21.5282, longitude = 39.1629 WHERE branch_code = 'KHUWAISA2';
-
--- Jeddah — Lulu Ameer Fawas (Prince Fawaz hypermarket area, north)
-UPDATE branches SET latitude = 21.5711, longitude = 39.2011 WHERE branch_code = 'LULUAMEERFAWAS';
-
--- Jeddah — Lulu Jamia (Al Jamiah district, near university)
-UPDATE branches SET latitude = 21.5021, longitude = 39.1906 WHERE branch_code = 'LULUJAMIA';
-
--- Jeddah — Lulu Ruwais (Al Ruwais district, north)
-UPDATE branches SET latitude = 21.5598, longitude = 39.1619 WHERE branch_code = 'LULURUWAIS';
-
--- Jeddah — Al Marwa (Al Marwa district, south)
-UPDATE branches SET latitude = 21.4856, longitude = 39.2186 WHERE branch_code = 'ALMARWA';
-
--- Jeddah — Muhameed (Al Muhammediyah district, south-west)
-UPDATE branches SET latitude = 21.4697, longitude = 39.2104 WHERE branch_code = 'MUHAMEED';
-
--- Jeddah — Obhur (Al Obhur Al Shamaliyah, far north coastal)
-UPDATE branches SET latitude = 21.6473, longitude = 39.1258 WHERE branch_code = 'OBHUR';
-
--- Jeddah — Safa (Al Safa district, central-south)
-UPDATE branches SET latitude = 21.4808, longitude = 39.1935 WHERE branch_code = 'SAFA';
-
--- Jeddah — Thayseer (Al Thayseer district)
-UPDATE branches SET latitude = 21.5069, longitude = 39.1879 WHERE branch_code = 'THAYSEER';
-
--- Jeddah — Wadi Marikh (Wadi Marikh, east Jeddah)
-UPDATE branches SET latitude = 21.5167, longitude = 39.1592 WHERE branch_code = 'WADIMARIKH';
-
--- Jeddah — Sanabel (Al Sanabel district)
-UPDATE branches SET latitude = 21.5354, longitude = 39.1683 WHERE branch_code = 'SANABEL';
-
--- Jeddah — Al-Naeem (Al Naeem district, east-central)
-UPDATE branches SET latitude = 21.5225, longitude = 39.2103 WHERE branch_code = 'ALNAEEM';
-
--- Makkah — Kakia (Kakia district, north Makkah)
-UPDATE branches SET latitude = 21.4547, longitude = 39.8423 WHERE branch_code = 'KAKIA';
-
--- Makkah — Taneem (Al Taneem area, north of Masjid al-Haram)
-UPDATE branches SET latitude = 21.4658, longitude = 39.8125 WHERE branch_code = 'MAKKAHTANEEM';
-
--- Jumoom — Al-Riyadh (Osfan area, on Jeddah–Madinah highway)
-UPDATE branches SET latitude = 21.9614, longitude = 39.3531 WHERE branch_code = 'ALRIYADHOSFAN';
-
--- Jumoom town centre
-UPDATE branches SET latitude = 21.7978, longitude = 39.6231 WHERE branch_code = 'JUMOOM';
-
--- Asfan — Gharan (Gharan village, east of Jeddah)
-UPDATE branches SET latitude = 21.8892, longitude = 39.4356 WHERE branch_code = 'GHARAN';
-
--- ============================================================
--- VERIFICATION QUERY — run after migration to confirm
--- ============================================================
--- SELECT branch_code, branch_name, latitude, longitude
--- FROM branches
--- WHERE latitude IS NULL AND status = 'active'
--- ORDER BY branch_name;
--- (Should return 0 rows if all seeded correctly)
+UPDATE branches SET latitude = 21.408472, longitude = 39.296599 WHERE branch_code = 'ALAJAWEED'; -- Al Ajaweed (Jeddah)
+UPDATE branches SET latitude = 21.307772, longitude = 39.260652 WHERE branch_code = 'ALQARNIA'; -- Al Qarnia (Jeddah)
+UPDATE branches SET latitude = 21.578688, longitude = 39.240313 WHERE branch_code = 'ALSAMIR2'; -- Al Samir 2 (Jeddah)
+UPDATE branches SET latitude = 21.514599, longitude = 39.787411 WHERE branch_code = 'ALSAMIR3'; -- Al Samir-3 (Jeddah)
+UPDATE branches SET latitude = 21.517475, longitude = 39.230993 WHERE branch_code = 'ALNASEEM'; -- Al-Naseem (Jeddah)
+UPDATE branches SET latitude = 21.798262, longitude = 39.139203 WHERE branch_code = 'ALREHELI'; -- Al-Reheli (Jeddah)
+UPDATE branches SET latitude = 21.401486, longitude = 39.450685 WHERE branch_code = 'BAHRA'; -- Bahra (Jeddah)
+UPDATE branches SET latitude = 21.308511, longitude = 39.262007 WHERE branch_code = 'FADEYLAH'; -- Fadeylah (Jeddah)
+UPDATE branches SET latitude = 21.741742, longitude = 39.191553 WHERE branch_code = 'HAMDANIYA'; -- Hamdaniya (Jeddah)
+UPDATE branches SET latitude = 21.484197, longitude = 39.369716 WHERE branch_code = 'HARASATH1'; -- Harasath 1 (Jeddah)
+UPDATE branches SET latitude = 21.476937, longitude = 39.352926 WHERE branch_code = 'HARASATH2'; -- Harasath 2 (Jeddah)
+UPDATE branches SET latitude = 21.496637, longitude = 39.270339 WHERE branch_code = 'KHUWAISA2'; -- Khuwaisa-2 (Jeddah)
+UPDATE branches SET latitude = 21.437728, longitude = 39.279921 WHERE branch_code = 'LULUAMEERFAWAS'; -- Lulu - Ameer Fawas (Jeddah)
+UPDATE branches SET latitude = 21.481900, longitude = 39.237800 WHERE branch_code = 'LULUJAMIA'; -- Lulu-Jamia (Jeddah)
+UPDATE branches SET latitude = 21.516864, longitude = 39.181480 WHERE branch_code = 'LULURUWAIS'; -- Lulu-Ruwais (Jeddah)
+UPDATE branches SET latitude = 21.607286, longitude = 39.211221 WHERE branch_code = 'ALMARWA'; -- Al Marwa (Jeddah)
+UPDATE branches SET latitude = 21.442582, longitude = 39.394180 WHERE branch_code = 'MUHAMEED'; -- Muhameed (Jeddah)
+UPDATE branches SET latitude = 21.788974, longitude = 39.095512 WHERE branch_code = 'OBHUR'; -- Obhur (Jeddah)
+UPDATE branches SET latitude = 21.571666, longitude = 39.220164 WHERE branch_code = 'SAFA'; -- Safa (Jeddah)
+UPDATE branches SET latitude = 21.554202, longitude = 39.286113 WHERE branch_code = 'THAYSEER'; -- Thayseer (Jeddah)
+UPDATE branches SET latitude = 21.556859, longitude = 39.291992 WHERE branch_code = 'WADIMARIKH'; -- Wadi Marikh (Jeddah)
+UPDATE branches SET latitude = 21.372587, longitude = 39.803877 WHERE branch_code = 'KAKIA'; -- Kakia (Makkah)
+UPDATE branches SET latitude = 21.514599, longitude = 39.787411 WHERE branch_code = 'MAKKAHTANEEM'; -- Makkah-Taneem (Makkah)
+UPDATE branches SET latitude = 21.845797, longitude = 39.202736 WHERE branch_code = 'ALRIYADHOSFAN'; -- Al-Riyadh (Osfan) (Jumoom)
+UPDATE branches SET latitude = 21.614700, longitude = 39.693727 WHERE branch_code = 'JUMOOM'; -- Jumoom (Jumoom)
+UPDATE branches SET latitude = 21.408390, longitude = 39.259584 WHERE branch_code = 'SANABEL'; -- Sanabel (Jeddah)
+UPDATE branches SET latitude = 21.618432, longitude = 39.141007 WHERE branch_code = 'ALNAEEM'; -- Al-Naeem (Jeddah)
+UPDATE branches SET latitude = 21.975562, longitude = 39.361438 WHERE branch_code = 'GHARAN'; -- Gharan (Asfan)

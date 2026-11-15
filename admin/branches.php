@@ -231,8 +231,10 @@ $offset  = ($page - 1) * $perPage;
 $where  = 'b.deleted_at IS NULL';
 $params = [];
 if ($search !== '') {
-    $where          .= ' AND (b.branch_name LIKE :q OR b.branch_code LIKE :q OR b.email LIKE :q)';
-    $params[':q']   = '%' . $search . '%';
+    $where          .= ' AND (b.branch_name LIKE :q1 OR b.branch_code LIKE :q2 OR b.email LIKE :q3)';
+    $params[':q1']   = '%' . $search . '%';
+    $params[':q2']   = '%' . $search . '%';
+    $params[':q3']   = '%' . $search . '%';
 }
 
 $countStmt = $db->prepare("SELECT COUNT(*) FROM branches b WHERE {$where}");
@@ -240,6 +242,7 @@ $countStmt->execute($params);
 $totalRows  = (int) $countStmt->fetchColumn();
 $totalPages = max(1, (int) ceil($totalRows / $perPage));
 $page       = min($page, $totalPages);
+$offset     = ($page - 1) * $perPage;
 
 $listStmt = $db->prepare("
     SELECT b.*, u.name AS manager_name
@@ -315,9 +318,11 @@ require_once __DIR__ . '/includes/topbar.php';
                        class="form-control">
             </div>
             <button type="submit" class="btn btn-primary" id="btn-search">Search</button>
-            <?php if ($search): ?>
-            <a href="branches.php" class="btn btn-outline" id="btn-clear">Clear</a>
-            <?php endif; ?>
+            <span id="clear-btn-wrapper">
+                <?php if ($search): ?>
+                <a href="branches.php" class="btn btn-outline" id="btn-clear">Clear</a>
+                <?php endif; ?>
+            </span>
         </form>
     </div>
 </div>
@@ -326,11 +331,10 @@ require_once __DIR__ . '/includes/topbar.php';
 <div class="card">
     <div class="card-header">
         <h2 class="card-title">All Branches</h2>
-        <span class="text-muted" style="font-size:13px;"><?= $totalRows ?> result(s)</span>
+        <span class="text-muted" id="result-count" style="font-size:13px;"><?= $totalRows ?> result(s)</span>
     </div>
     <div class="table-responsive">
-        <div class="table-responsive">
-            <table class="table" id="branches-table">
+        <table class="table" id="branches-table">
             <thead>
                 <tr>
                     <th>#</th>
@@ -423,7 +427,6 @@ require_once __DIR__ . '/includes/topbar.php';
             <?php endif; ?>
             </tbody>
             </table>
-        </div>
     </div>
 
     <!-- Pagination -->
@@ -713,7 +716,7 @@ if (searchInput) {
             if (query.trim() === '') {
                 url.searchParams.delete('q');
             } else {
-                url.searchParams.set('q', query);
+                url.searchParams.set('q', query.trim());
             }
             url.searchParams.set('page', 1);
             
@@ -722,8 +725,11 @@ if (searchInput) {
             const tableContainer = document.querySelector('.table-responsive');
             if (tableContainer) tableContainer.style.opacity = '0.5';
 
-            fetch(url, { credentials: 'same-origin' })
-                .then(res => res.text())
+            fetch(url, { credentials: 'same-origin', cache: 'no-store' })
+                .then(res => {
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    return res.text();
+                })
                 .then(html => {
                     if (tableContainer) tableContainer.style.opacity = '1';
                     
@@ -733,6 +739,18 @@ if (searchInput) {
                     const newTableContainer = doc.querySelector('.table-responsive');
                     if (newTableContainer && tableContainer) {
                         tableContainer.innerHTML = newTableContainer.innerHTML;
+                    }
+                    
+                    const currentCount = document.getElementById('result-count');
+                    const newCount = doc.getElementById('result-count');
+                    if (currentCount && newCount) {
+                        currentCount.innerHTML = newCount.innerHTML;
+                    }
+
+                    const currentClear = document.getElementById('clear-btn-wrapper');
+                    const newClear = doc.getElementById('clear-btn-wrapper');
+                    if (currentClear && newClear) {
+                        currentClear.innerHTML = newClear.innerHTML;
                     }
                     
                     const currentPagination = document.querySelector('.pagination-wrapper');

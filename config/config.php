@@ -30,8 +30,8 @@ define('APP_SECRET', 'h7*K9$pL2!qW5@vX8^mN4#cR1%tY6&bZ');
 // CRON_SECRET is required to trigger cron jobs from the web
 define('CRON_SECRET', 'x9$Q2!mP7#vL5@wK4^jN8*bR1%tY6&cZ');
 
-// ---- Timezone (adjust to your store's local timezone) ----
-date_default_timezone_set('Asia/Dubai');
+// ---- Timezone (Saudi Arabia / Jeddah: UTC+3) ----
+date_default_timezone_set('Asia/Riyadh');
 
 // ---- Error handling ----
 // Keep display_errors OFF in production. Flip to '1' only while debugging locally.

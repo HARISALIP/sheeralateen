@@ -155,8 +155,11 @@ $where = ["o.deleted_at IS NULL", "o.assigned_branch_id = $branchId"];
 $params = [];
 
 if ($search !== '') {
-    $where[] = "(o.order_number LIKE :search OR o.customer_name LIKE :search OR o.customer_phone LIKE :search OR o.shopify_order_number LIKE :search)";
-    $params[':search'] = "%$search%";
+    $where[] = "(o.order_number LIKE :s1 OR o.customer_name LIKE :s2 OR o.customer_phone LIKE :s3 OR o.shopify_order_number LIKE :s4)";
+    $params[':s1'] = "%$search%";
+    $params[':s2'] = "%$search%";
+    $params[':s3'] = "%$search%";
+    $params[':s4'] = "%$search%";
 }
 if ($filterStatus !== '') {
     $where[] = "o.current_status = :status";
@@ -173,7 +176,9 @@ $whereSql = "WHERE " . implode(' AND ', $where);
 $countStmt = $db->prepare("SELECT COUNT(*) FROM orders o $whereSql");
 $countStmt->execute($params);
 $totalRecords = (int) $countStmt->fetchColumn();
-$totalPages = ceil($totalRecords / $limit) ?: 1;
+$totalPages = max(1, (int) ceil($totalRecords / $limit));
+$page = min($page, $totalPages);
+$offset = ($page - 1) * $limit;
 
 // Fetch orders
 $stmt = $db->prepare("

@@ -3,9 +3,20 @@
  * index.php
  * ---------------------------------------------------------
  * Public landing page for the Sheera Lateen Branch Management
- * System. Purely informational — no session or DB access
- * required, so it stays fast even before login.
+ * System. If already authenticated or remembered, redirects
+ * straight to dashboard.
  */
+
+require_once __DIR__ . '/core/bootstrap.php';
+
+if (Auth::isLoggedIn()) {
+    if ($_SESSION['role'] === 'super_admin') {
+        header('Location: admin/dashboard.php');
+    } else {
+        header('Location: manager/dashboard.php');
+    }
+    exit;
+}
 
 $appName    = 'Branch Management System';
 $brandName  = 'Sheera Lateen';
@@ -17,6 +28,13 @@ $year       = date('Y');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($brandName) ?> | <?= htmlspecialchars($appName) ?></title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/assets/images/favicon.svg">
+    <link rel="icon" type="image/png" sizes="64x64" href="/assets/images/favicon.png">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" href="/assets/images/favicon.png">
+
     <meta name="description" content="A centralized platform for managing branches, orders, and business operations.">
     <link rel="stylesheet" href="assets/css/landing.css">
 </head>

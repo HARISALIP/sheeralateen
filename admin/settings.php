@@ -66,9 +66,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     /* ── SYSTEM ── */
     } elseif ($tab === 'system') {
-        $currency   = trim($_POST['currency_symbol'] ?? '₹');
+        $currency   = trim($_POST['currency_symbol'] ?? 'SAR');
         $perPage    = max(5, min(100, (int) ($_POST['orders_per_page'] ?? 25)));
-        $timezone   = trim($_POST['timezone'] ?? 'Asia/Kolkata');
+        $timezone   = trim($_POST['timezone'] ?? 'Asia/Riyadh');
         $autoAssign = isset($_POST['branch_auto_assign']) ? '1' : '0';
 
         save_setting($db, 'currency_symbol',   $currency);
@@ -172,9 +172,9 @@ $s = [
     'company_address'     => get_setting($db, 'company_address',   ''),
     'company_logo'        => get_setting($db, 'company_logo',      ''),
     'company_favicon'     => get_setting($db, 'company_favicon',   ''),
-    'currency_symbol'     => get_setting($db, 'currency_symbol',   '₹'),
+    'currency_symbol'     => get_setting($db, 'currency_symbol',   'SAR'),
     'orders_per_page'     => get_setting($db, 'orders_per_page',   '25'),
-    'timezone'            => get_setting($db, 'timezone',          'Asia/Kolkata'),
+    'timezone'            => get_setting($db, 'timezone',          'Asia/Riyadh'),
     'branch_auto_assign'  => get_setting($db, 'branch_auto_assign','0'),
 
 ];
@@ -194,9 +194,9 @@ require_once __DIR__ . '/includes/topbar.php';
 
 // Available PHP timezones (abbreviated list of common ones)
 $timezones = [
-    'Asia/Kolkata'       => 'Asia/Kolkata (IST, UTC+5:30)',
+    'Asia/Riyadh'        => 'Asia/Riyadh (AST, UTC+3) — Jeddah / Saudi Arabia',
     'Asia/Dubai'         => 'Asia/Dubai (GST, UTC+4)',
-    'Asia/Riyadh'        => 'Asia/Riyadh (AST, UTC+3)',
+    'Asia/Kolkata'       => 'Asia/Kolkata (IST, UTC+5:30)',
     'Asia/Singapore'     => 'Asia/Singapore (SGT, UTC+8)',
     'Asia/Karachi'       => 'Asia/Karachi (PKT, UTC+5)',
     'Asia/Dhaka'         => 'Asia/Dhaka (BST, UTC+6)',

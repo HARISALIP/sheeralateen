@@ -19,12 +19,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $email    = trim($_POST['email'] ?? '');
         $password = $_POST['password'] ?? '';
+        $remember = !empty($_POST['remember']);
 
         if ($email === '' || $password === '') {
             $error = 'Please enter both email and password.';
         } else {
             $auth = new Auth(Database::getConnection());
-            $user = $auth->attemptLogin($email, $password);
+            $user = $auth->attemptLogin($email, $password, null, $remember);
 
             if ($user) {
                 if ($user['role'] === 'super_admin') {
@@ -46,7 +47,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign In | <?= htmlspecialchars(APP_NAME) ?></title>
-    <link rel="stylesheet" href="assets/css/auth.css?v=2">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/assets/images/favicon.svg">
+    <link rel="icon" type="image/png" sizes="64x64" href="/assets/images/favicon.png">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" href="/assets/images/favicon.png">
+
+    <link rel="stylesheet" href="assets/css/auth.css?v=3">
 </head>
 <body>
     <div class="auth-wrapper">
@@ -80,6 +88,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             </svg>
                         </button>
                     </div>
+                </div>
+
+                <div class="form-group form-options">
+                    <label class="checkbox-label" for="remember">
+                        <input type="checkbox" id="remember" name="remember" value="1" <?= (!isset($_POST['email']) || !empty($_POST['remember'])) ? 'checked' : '' ?>>
+                        <span>Remember me on this device</span>
+                    </label>
                 </div>
 
                 <button type="submit" class="btn-primary">Sign In</button>

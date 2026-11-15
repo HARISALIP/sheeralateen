@@ -318,6 +318,36 @@
     }
 
     // -----------------------------------------------------------------------
+    // UI: Session Expired Banner
+    // -----------------------------------------------------------------------
+
+    function showSessionExpiredBanner() {
+        let banner = document.getElementById('session-expired-banner');
+        if (!banner) {
+            banner = document.createElement('div');
+            banner.id = 'session-expired-banner';
+            banner.style.cssText = [
+                'position:fixed', 'top:0', 'left:0', 'right:0',
+                'background:#dc2626', 'color:#fff', 'padding:12px 20px',
+                'text-align:center', 'font-size:0.95rem', 'font-weight:600',
+                'z-index:9999999', 'box-shadow:0 4px 20px rgba(0,0,0,0.3)',
+                'display:flex', 'align-items:center', 'justify-content:center', 'gap:15px'
+            ].join(';');
+            banner.innerHTML =
+                '<span>⚠️ Session expired. Order notifications are paused.</span>' +
+                '<a href="/login.php" style="background:#fff;color:#dc2626;padding:5px 14px;border-radius:6px;text-decoration:none;font-size:0.85rem;font-weight:700;">Sign Back In</a>';
+            document.body.appendChild(banner);
+        }
+    }
+
+    function hideSessionExpiredBanner() {
+        const banner = document.getElementById('session-expired-banner');
+        if (banner) {
+            banner.remove();
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // Core: Polling
     // -----------------------------------------------------------------------
 
@@ -331,10 +361,12 @@
         })
         .then(res => {
             if (res.status === 401) {
-                // Not logged in anymore — stop polling silently
-                console.log('[OrderAlerts] Session expired, polling stopped.');
+                // Not logged in anymore — alert user with banner
+                console.warn('[OrderAlerts] Session expired, polling stopped.');
+                showSessionExpiredBanner();
                 return null;
             }
+            hideSessionExpiredBanner();
             return res.text(); // Use text() so we can strip BOM before parsing
         })
         .then(text => {
@@ -397,6 +429,16 @@
 
         // Then poll every 8 seconds for new orders
         setInterval(pollNewOrders, 8000);
+
+        // Immediately poll when the user returns to the tab or unlocks computer
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                pollNewOrders();
+            }
+        });
+        window.addEventListener('focus', function() {
+            pollNewOrders();
+        });
     }
 
     if (document.readyState === 'loading') {

@@ -12,16 +12,25 @@ error_reporting(E_ALL);
 
 require_once __DIR__ . '/../config/config.php';
 
-// Configure the session cookie before starting the session
-session_set_cookie_params([
-    'lifetime' => 0,
-    'path'     => '/',
-    'secure'   => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
-    'httponly' => true,
-    'samesite' => 'Lax',
-]);
-session_name(SESSION_NAME);
-session_start();
+// Enforce Jeddah / Saudi Arabia timezone (UTC+3)
+date_default_timezone_set('Asia/Riyadh');
+
+// Configure session lifetime (support persistent sessions up to 30 days)
+$hasRemember = !empty($_COOKIE['bms_remember']);
+$sessionLifetime = 30 * 86400; // 30 days in seconds
+ini_set('session.gc_maxlifetime', (string) $sessionLifetime);
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_set_cookie_params([
+        'lifetime' => $hasRemember ? $sessionLifetime : 0,
+        'path'     => '/',
+        'secure'   => isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+    session_name(SESSION_NAME);
+    session_start();
+}
 
 require_once __DIR__ . '/Database.php';
 require_once __DIR__ . '/ActivityLogger.php';
@@ -35,5 +44,11 @@ require_once __DIR__ . '/ShopifySyncService.php';
 require_once __DIR__ . '/LeajlakService.php';
 require_once __DIR__ . '/GeoService.php';
 
-
-
+// Auto-authenticate via persistent Remember Me token if session is absent
+if (!Auth::isLoggedIn() && $hasRemember) {
+    try {
+        Auth::checkRememberMe(Database::getConnection());
+    } catch (\Throwable $e) {
+        error_log('Auto remember-me failed: ' . $e->getMessage());
+    }
+}
