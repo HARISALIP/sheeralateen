@@ -54,14 +54,21 @@
 
     // Unlock audio on any user interaction (click, touch, key)
     function unlockAudio() {
+        setupAudioElement();
         initAudioContext();
-        if (audioCtx && audioCtx.state === 'suspended') {
-            audioCtx.resume().then(() => {
-                isUnlocked = true;
-                console.log('[OrderAlerts] Audio unlocked');
-            }).catch(() => {});
-        } else if (audioCtx && audioCtx.state === 'running') {
-            isUnlocked = true;
+
+        if (audioElement && !isUnlocked) {
+            audioElement.muted = true;
+            const p = audioElement.play();
+            if (p !== undefined) {
+                p.then(() => {
+                    audioElement.pause();
+                    audioElement.currentTime = 0;
+                    audioElement.muted = false;
+                    isUnlocked = true;
+                    console.log('[OrderAlerts] Audio unlocked');
+                }).catch(() => {});
+            }
         }
     }
 
@@ -110,28 +117,42 @@
     }
 
     /**
-     * Start continuous alert ringing for up to 30 seconds using ONLY the melodic chime.
+     * Start continuous alert ringing for up to 30 seconds.
      * Can be silenced at any time by calling stopContinuousAlert().
      */
     function startContinuousAlert(durationSeconds = 30, isReminder = false) {
         stopContinuousAlert(); // Clear any ongoing sound
         isAlertRinging = true;
 
-        initAudioContext();
+        setupAudioElement();
 
-        // Play the chime pulse immediately
-        playSynthChimePulse(isReminder);
-
-        // Repeat the chime every 1.8 seconds in a continuous 30-second loop
-        soundLoopInterval = setInterval(() => {
-            if (!isAlertRinging) {
-                clearInterval(soundLoopInterval);
-                return;
+        // 1. Play ONLY the lengthy high-quality order_alert.wav file in a continuous loop
+        let isAudioPlaying = false;
+        if (audioElement) {
+            audioElement.currentTime = 0;
+            audioElement.loop = true;
+            audioElement.muted = false;
+            const p = audioElement.play();
+            if (p !== undefined) {
+                p.then(() => {
+                    isAudioPlaying = true;
+                }).catch(() => {
+                    // Fallback to synth chime ONLY if the browser blocks HTML5 audio
+                    if (isAlertRinging && !isAudioPlaying) {
+                        playSynthChimePulse(isReminder);
+                        soundLoopInterval = setInterval(() => {
+                            if (!isAlertRinging) {
+                                clearInterval(soundLoopInterval);
+                                return;
+                            }
+                            playSynthChimePulse(isReminder);
+                        }, 2200);
+                    }
+                });
             }
-            playSynthChimePulse(isReminder);
-        }, 1800);
+        }
 
-        // Automatically stop ringing after durationSeconds (30 seconds)
+        // 2. Automatically stop ringing after durationSeconds (default 30s)
         soundStopTimeout = setTimeout(() => {
             stopContinuousAlert();
             console.log('[OrderAlerts] Sound alert auto-stopped after ' + durationSeconds + 's');
@@ -152,6 +173,13 @@
         if (soundStopTimeout) {
             clearTimeout(soundStopTimeout);
             soundStopTimeout = null;
+        }
+        if (audioElement) {
+            try {
+                audioElement.pause();
+                audioElement.currentTime = 0;
+                audioElement.loop = false;
+            } catch(e) {}
         }
         updateSilenceButtonsUI(false);
     }
