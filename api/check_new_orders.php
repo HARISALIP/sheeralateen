@@ -2,13 +2,12 @@
 /**
  * api/check_new_orders.php
  * -------------------------------------------------------------
- * Lightweight endpoint to check for newly arrived orders.
- * Returns new orders for Super Admin (all branches) or
- * Branch Manager (assigned branch only).
+ * Lightweight endpoint to check for newly arrived orders and
+ * unacknowledged pending orders needing reminders.
+ * Returns data for Super Admin (all branches) or Branch Manager (assigned branch).
  */
 
 // Strip any BOM or whitespace that may have been output before <?php
-// (happens when the file is saved with UTF-8 BOM encoding on Windows)
 while (ob_get_level() > 0) { ob_end_clean(); }
 ob_start();
 
@@ -28,7 +27,43 @@ $role     = $_SESSION['role'] ?? '';
 $branchId = (int)($_SESSION['branch_id'] ?? 0);
 $sinceId  = isset($_GET['since_id']) ? (int)$_GET['since_id'] : 0;
 
+// -------------------------------------------------------------
+// Check for Unacknowledged Pending Orders (Reminders)
+// Orders still in 'New' status after 2 minutes (up to 3 hours)
+// -------------------------------------------------------------
+$pendingReminders = [];
+try {
+    $remindSql = "
+        SELECT o.id, o.order_number, o.customer_name, o.total_amount, o.created_at, b.branch_name,
+               TIMESTAMPDIFF(SECOND, o.created_at, NOW()) AS age_seconds
+        FROM orders o
+        LEFT JOIN branches b ON o.assigned_branch_id = b.id
+        WHERE o.current_status = 'New'
+          AND o.deleted_at IS NULL
+          AND o.created_at <= (NOW() - INTERVAL 2 MINUTE)
+          AND o.created_at >= (NOW() - INTERVAL 3 HOUR)
+    ";
+
+    if ($role === 'super_admin') {
+        $stmtRemind = $db->query($remindSql . " ORDER BY o.created_at ASC LIMIT 5");
+        $pendingReminders = $stmtRemind->fetchAll(PDO::FETCH_ASSOC);
+    } else {
+        $stmtRemind = $db->prepare($remindSql . " AND o.assigned_branch_id = :bid ORDER BY o.created_at ASC LIMIT 5");
+        $stmtRemind->execute([':bid' => $branchId]);
+        $pendingReminders = $stmtRemind->fetchAll(PDO::FETCH_ASSOC);
+    }
+} catch (\Throwable $e) {
+    error_log('check_new_orders reminder query error: ' . $e->getMessage());
+}
+
+foreach ($pendingReminders as &$pr) {
+    $pr['age_minutes'] = max(1, (int) round(($pr['age_seconds'] ?? 0) / 60));
+}
+unset($pr);
+
+// -------------------------------------------------------------
 // Handshake: if since_id <= 0, check for recent orders created in the last 15 minutes
+// -------------------------------------------------------------
 if ($sinceId <= 0) {
     if ($role === 'super_admin') {
         $stmtMax = $db->query("SELECT COALESCE(MAX(id), 0) FROM orders WHERE deleted_at IS NULL");
@@ -64,12 +99,15 @@ if ($sinceId <= 0) {
         'initialized' => true,
         'latest_id'   => $maxId,
         'has_new'     => count($recentOrders) > 0,
-        'orders'      => $recentOrders
+        'orders'      => $recentOrders,
+        'reminders'   => $pendingReminders
     ]);
     exit;
 }
 
+// -------------------------------------------------------------
 // Regular polling: fetch new orders with ID > since_id
+// -------------------------------------------------------------
 if ($role === 'super_admin') {
     $stmt = $db->prepare("
         SELECT o.id, o.order_number, o.customer_name, o.total_amount, o.created_at, b.branch_name
@@ -104,5 +142,6 @@ echo json_encode([
     'initialized' => false,
     'latest_id'   => $maxId,
     'has_new'     => count($orders) > 0,
-    'orders'      => $orders
+    'orders'      => $orders,
+    'reminders'   => $pendingReminders
 ]);
