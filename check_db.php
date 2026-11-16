@@ -6,11 +6,11 @@ $db = Database::getConnection();
 
 header('Content-Type: text/plain; charset=utf-8');
 
-// All November orders
-$stmt = $db->query("SELECT id, order_number, customer_name, total_amount, payment_status, current_status, leajlak_order_id, leajlak_status, created_at FROM orders WHERE created_at >= '2026-11-01 00:00:00' ORDER BY id ASC");
-$novOrders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$wl = $db->query("SELECT * FROM webhook_logs WHERE topic LIKE '%leajlak%' OR payload LIKE '%payment%' ORDER BY id DESC LIMIT 5")->fetchAll(PDO::FETCH_ASSOC);
+echo "=== LEAJLAK WEBHOOK LOGS ===\n";
+print_r($wl);
 
-echo "=== ALL NOVEMBER ORDERS (" . count($novOrders) . ") ===\n";
-foreach ($novOrders as $o) {
-    echo "ID: {$o['id']} | #{$o['order_number']} | Status: {$o['current_status']} | Payment: {$o['payment_status']} | Total: {$o['total_amount']} | Leajlak ID: " . ($o['leajlak_order_id'] ?: 'None') . " | Leajlak Status: " . ($o['leajlak_status'] ?: 'None') . " | Date: {$o['created_at']}\n";
-}
+// Also check all distinct topics in webhook_logs
+$topics = $db->query("SELECT topic, COUNT(*) as cnt FROM webhook_logs GROUP BY topic")->fetchAll(PDO::FETCH_ASSOC);
+echo "\n=== TOPICS IN WEBHOOK LOGS ===\n";
+print_r($topics);
