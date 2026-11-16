@@ -4,17 +4,25 @@ $db = Database::getConnection();
 
 header('Content-Type: text/plain; charset=utf-8');
 
-// 1. Who is User 25?
-$user25 = $db->query("SELECT id, name, email, role FROM users WHERE id = 25")->fetch(PDO::FETCH_ASSOC);
-echo "=== USER 25 ===\n";
-print_r($user25);
+// 1. Check sync_queue for push_payment or order 17
+$queue = $db->query("SELECT * FROM sync_queue WHERE order_id = 17 OR action LIKE '%payment%' ORDER BY id DESC LIMIT 20")->fetchAll(PDO::FETCH_ASSOC);
+echo "=== SYNC QUEUE PAYMENT / ORDER 17 ===\n";
+print_r($queue);
 
-// 2. Activity logs around 2026-11-16 14:00 - 15:00
-$logsToday = $db->query("SELECT * FROM activity_logs WHERE created_at >= '2026-11-16 14:00:00' ORDER BY id ASC")->fetchAll(PDO::FETCH_ASSOC);
-echo "\n=== ACTIVITY LOGS TODAY 14:00+ ===\n";
-print_r($logsToday);
+// 2. Check all sync_queue with action push_payment
+$pushPaymentQueue = $db->query("SELECT * FROM sync_queue WHERE action = 'push_payment' ORDER BY id DESC LIMIT 10")->fetchAll(PDO::FETCH_ASSOC);
+echo "\n=== ALL PUSH PAYMENT JOBS ===\n";
+print_r($pushPaymentQueue);
 
-// 3. Check Order #1147 all activity logs
-$logs1147All = $db->query("SELECT a.*, u.name as user_name FROM activity_logs a LEFT JOIN users u ON a.user_id = u.id WHERE a.order_id = 17 ORDER BY a.id ASC")->fetchAll(PDO::FETCH_ASSOC);
-echo "\n=== ALL LOGS FOR ORDER #1147 (id 17) ===\n";
-print_r($logs1147All);
+// 3. Check order_status_history for order 17
+$hist17 = $db->query("SELECT h.*, u.name as user_name FROM order_status_history h LEFT JOIN users u ON h.changed_by = u.id WHERE h.order_id = 17 ORDER BY h.id ASC")->fetchAll(PDO::FETCH_ASSOC);
+echo "\n=== STATUS HISTORY FOR ORDER 17 (#1147) ===\n";
+print_r($hist17);
+
+// 4. Check if ANY Leajlak order in history was ever created with payment_type 0
+// Let's check all activity logs where action = 'leajlak_order_created'
+$leajlakLogs = $db->query("SELECT a.id, a.order_id, a.created_at, o.order_number, o.payment_status FROM activity_logs a LEFT JOIN orders o ON a.order_id = o.id WHERE a.action = 'leajlak_order_created' ORDER BY a.id DESC")->fetchAll(PDO::FETCH_ASSOC);
+echo "\n=== ALL LEAJLAK CREATED ORDERS AND CURRENT PAYMENT STATUS ===\n";
+foreach ($leajlakLogs as $ll) {
+    echo "Log #{$ll['id']} | Order {$ll['order_number']} (ID: {$ll['order_id']}) | Payment Status: {$ll['payment_status']} | Date: {$ll['created_at']}\n";
+}
