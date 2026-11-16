@@ -4,23 +4,31 @@ $db = Database::getConnection();
 
 header('Content-Type: text/plain; charset=utf-8');
 
-// 1. Check all orders with payment_status = 'paid'
-$paidOrders = $db->query("SELECT id, order_number, payment_status, current_status, total_amount, leajlak_order_id, leajlak_status, created_at, updated_at FROM orders WHERE payment_status = 'paid' ORDER BY id DESC")->fetchAll(PDO::FETCH_ASSOC);
-echo "=== ORDERS WITH payment_status = 'paid' (" . count($paidOrders) . ") ===\n";
-print_r($paidOrders);
+// 1. Order #1147 details
+$o1147 = $db->query("SELECT * FROM orders WHERE order_number = '#1147' OR id = 17")->fetch(PDO::FETCH_ASSOC);
+echo "=== ORDER #1147 ===\n";
+print_r($o1147);
 
-// 2. Summary of payment_status counts
-$counts = $db->query("SELECT payment_status, COUNT(*) as cnt FROM orders GROUP BY payment_status")->fetchAll(PDO::FETCH_ASSOC);
-echo "\n=== PAYMENT STATUS COUNTS ===\n";
-print_r($counts);
+// 2. Activity logs for Order #1147
+$logs1147 = $db->query("SELECT * FROM activity_logs WHERE order_id = 17 ORDER BY id ASC")->fetchAll(PDO::FETCH_ASSOC);
+echo "\n=== ACTIVITY LOGS FOR #1147 ===\n";
+print_r($logs1147);
 
-// 3. Check recent activity logs related to leajlak
-$logs = $db->query("SELECT * FROM activity_logs WHERE action LIKE '%leajlak%' ORDER BY id DESC LIMIT 20")->fetchAll(PDO::FETCH_ASSOC);
-echo "\n=== RECENT LEAJLAK ACTIVITY LOGS ===\n";
-print_r($logs);
+// 3. Webhook log for Order #1147
+if (!empty($o1147['shopify_order_id'])) {
+    $wl = $db->query("SELECT id, topic, received_at, payload FROM webhook_logs WHERE payload LIKE '%" . $o1147['shopify_order_id'] . "%' LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+    if ($wl) {
+        $p = json_decode($wl['payload'], true);
+        echo "\n=== SHOPIFY WEBHOOK PAYLOAD FOR #1147 ===\n";
+        echo "financial_status: " . ($p['financial_status'] ?? 'N/A') . "\n";
+        echo "gateway: " . ($p['gateway'] ?? 'N/A') . "\n";
+        echo "payment_gateway_names: " . json_encode($p['payment_gateway_names'] ?? []) . "\n";
+    }
+}
 
-// 4. Check the latest 10 orders overall
-$latestOrders = $db->query("SELECT id, order_number, payment_status, current_status, total_amount, leajlak_order_id, leajlak_status, created_at FROM orders ORDER BY id DESC LIMIT 10")->fetchAll(PDO::FETCH_ASSOC);
-echo "\n=== LATEST 10 ORDERS ===\n";
-print_r($latestOrders);
+// 4. All leajlak_order_created activity logs
+$createdLogs = $db->query("SELECT a.*, o.order_number, o.payment_status, o.total_amount FROM activity_logs a LEFT JOIN orders o ON a.order_id = o.id WHERE a.action = 'leajlak_order_created' ORDER BY a.id DESC")->fetchAll(PDO::FETCH_ASSOC);
+echo "\n=== ALL LEAJLAK_ORDER_CREATED LOGS (" . count($createdLogs) . ") ===\n";
+print_r($createdLogs);
+
 
