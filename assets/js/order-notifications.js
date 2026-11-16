@@ -34,7 +34,7 @@
                 audioElement = document.createElement('audio');
                 audioElement.id = 'sheera-order-audio';
                 audioElement.preload = 'auto';
-                audioElement.src = '/assets/sounds/order_alert.wav?v=4';
+                audioElement.src = '/assets/sounds/order_alert.wav?v=5';
                 document.body.appendChild(audioElement);
             }
         }
@@ -125,35 +125,34 @@
         isAlertRinging = true;
 
         setupAudioElement();
-        initAudioContext();
 
-        // 1. HTML5 audio looping
+        // 1. Play ONLY the lengthy high-quality order_alert.wav file in a continuous loop
+        let isAudioPlaying = false;
         if (audioElement) {
             audioElement.currentTime = 0;
             audioElement.loop = true;
             audioElement.muted = false;
             const p = audioElement.play();
             if (p !== undefined) {
-                p.catch(() => {
-                    // Handled by WebAudio fallback below
+                p.then(() => {
+                    isAudioPlaying = true;
+                }).catch(() => {
+                    // Fallback to synth chime ONLY if the browser blocks HTML5 audio
+                    if (isAlertRinging && !isAudioPlaying) {
+                        playSynthChimePulse(isReminder);
+                        soundLoopInterval = setInterval(() => {
+                            if (!isAlertRinging) {
+                                clearInterval(soundLoopInterval);
+                                return;
+                            }
+                            playSynthChimePulse(isReminder);
+                        }, 2200);
+                    }
                 });
             }
         }
 
-        // 2. Play WebAudio chime pulse immediately and repeat every 1.8 seconds
-        playSynthChimePulse(isReminder);
-        soundLoopInterval = setInterval(() => {
-            if (!isAlertRinging) {
-                clearInterval(soundLoopInterval);
-                return;
-            }
-            playSynthChimePulse(isReminder);
-            if (audioElement && audioElement.paused && isUnlocked) {
-                audioElement.play().catch(() => {});
-            }
-        }, 1800);
-
-        // 3. Automatically stop ringing after durationSeconds (default 30s)
+        // 2. Automatically stop ringing after durationSeconds (default 30s)
         soundStopTimeout = setTimeout(() => {
             stopContinuousAlert();
             console.log('[OrderAlerts] Sound alert auto-stopped after ' + durationSeconds + 's');
