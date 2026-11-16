@@ -6,28 +6,23 @@ $db = Database::getConnection();
 
 header('Content-Type: text/plain; charset=utf-8');
 
-try {
-    // 1. Check sync_queue for push_payment or order 17
-    $queue = $db->query("SELECT * FROM sync_queue WHERE local_entity_id = 17 OR action LIKE '%payment%' ORDER BY id DESC LIMIT 20")->fetchAll(PDO::FETCH_ASSOC);
-    echo "=== SYNC QUEUE PAYMENT / ORDER 17 ===\n";
-    print_r($queue);
+// Check order 42 (#1172)
+$o42 = $db->query("SELECT * FROM orders WHERE id = 42")->fetch(PDO::FETCH_ASSOC);
+echo "=== ORDER 42 (#1172) ===\n";
+print_r($o42);
 
-    // 2. Check all sync_queue with action push_payment
-    $pushPaymentQueue = $db->query("SELECT * FROM sync_queue WHERE action = 'push_payment' ORDER BY id DESC LIMIT 10")->fetchAll(PDO::FETCH_ASSOC);
-    echo "\n=== ALL PUSH PAYMENT JOBS ===\n";
-    print_r($pushPaymentQueue);
+// Activity logs for order 42
+$logs42 = $db->query("SELECT a.*, u.name as user_name FROM activity_logs a LEFT JOIN users u ON a.user_id = u.id WHERE a.order_id = 42 ORDER BY a.id ASC")->fetchAll(PDO::FETCH_ASSOC);
+echo "\n=== LOGS FOR ORDER 42 ===\n";
+print_r($logs42);
 
-    // 3. Check order_status_history for order 17
-    $hist17 = $db->query("SELECT h.*, u.name as user_name FROM order_status_history h LEFT JOIN users u ON h.changed_by = u.id WHERE h.order_id = 17 ORDER BY h.id ASC")->fetchAll(PDO::FETCH_ASSOC);
-    echo "\n=== STATUS HISTORY FOR ORDER 17 (#1147) ===\n";
-    print_r($hist17);
+// Check order 35 (#1165) which had jobs 56, 59 push_payment
+$o35 = $db->query("SELECT * FROM orders WHERE id = 35")->fetch(PDO::FETCH_ASSOC);
+echo "\n=== ORDER 35 (#1165) ===\n";
+print_r($o35);
 
-    // 4. Check if ANY Leajlak order in history was ever created with payment_type 0
-    $leajlakLogs = $db->query("SELECT a.id, a.order_id, a.created_at, o.order_number, o.payment_status FROM activity_logs a LEFT JOIN orders o ON a.order_id = o.id WHERE a.action = 'leajlak_order_created' ORDER BY a.id DESC")->fetchAll(PDO::FETCH_ASSOC);
-    echo "\n=== ALL LEAJLAK CREATED ORDERS AND CURRENT PAYMENT STATUS ===\n";
-    foreach ($leajlakLogs as $ll) {
-        echo "Log #{$ll['id']} | Order {$ll['order_number']} (ID: {$ll['order_id']}) | Payment Status: {$ll['payment_status']} | Date: {$ll['created_at']}\n";
-    }
-} catch (Throwable $e) {
-    echo "ERROR: " . $e->getMessage() . "\n" . $e->getTraceAsString();
-}
+// Check if any order payload sent to Leajlak had payment_type: 0
+// Let's inspect the code in core/LeajlakService.php again
+echo "\n=== LEAJLAK PAYMENT LOGIC IN CODE ===\n";
+echo "Line 30: paymentMode = (order['payment_status'] ?? 'pending') === 'paid' ? 0 (PREPAID) : 1 (CASH)\n";
+echo "Line 121: 'payment_type' => (int)paymentMode\n";
