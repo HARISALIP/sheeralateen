@@ -6,11 +6,11 @@ $db = Database::getConnection();
 
 header('Content-Type: text/plain; charset=utf-8');
 
-$wl = $db->query("SELECT * FROM webhook_logs WHERE topic LIKE '%leajlak%' OR payload LIKE '%payment%' ORDER BY id DESC LIMIT 5")->fetchAll(PDO::FETCH_ASSOC);
-echo "=== LEAJLAK WEBHOOK LOGS ===\n";
-print_r($wl);
-
-// Also check all distinct topics in webhook_logs
-$topics = $db->query("SELECT topic, COUNT(*) as cnt FROM webhook_logs GROUP BY topic")->fetchAll(PDO::FETCH_ASSOC);
-echo "\n=== TOPICS IN WEBHOOK LOGS ===\n";
-print_r($topics);
+$logs = $db->query("SELECT id, topic, received_at, payload FROM webhook_logs WHERE topic = 'leajlak/order_status' ORDER BY id DESC LIMIT 3")->fetchAll(PDO::FETCH_ASSOC);
+echo "=== RECENT LEAJLAK WEBHOOK LOGS ===\n";
+foreach ($logs as $l) {
+    echo "ID: {$l['id']} | Received: {$l['received_at']}\n";
+    $p = json_decode($l['payload'], true);
+    print_r($p);
+    echo "\n----------------------------------------\n";
+}
