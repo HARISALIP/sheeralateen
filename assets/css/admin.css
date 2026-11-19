@@ -26,7 +26,7 @@
     --info-bg:      #dbeafe;
 
     /* Backgrounds */
-    --bg-main:      #f8fafc;
+    --bg-main:      #F7F8FA;
     --bg-card:      #ffffff;
     --bg-sidebar:   #1e293b;
 
@@ -38,12 +38,12 @@
     --sidebar-active-border:#4f46e5;
 
     /* Text */
-    --text-main:    #0f172a;
+    --text-main:    #172033;
     --text-sub:     #334155;
-    --text-muted:   #64748b;
+    --text-muted:   #778399;
 
     /* Borders & Shadows */
-    --border:       #e2e8f0;
+    --border:       #E8ECF2;
     --border-focus: #4f46e5;
     --shadow-sm:    0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
     --shadow-md:    0 4px 12px rgba(15,23,42,0.08), 0 2px 4px rgba(15,23,42,0.04);

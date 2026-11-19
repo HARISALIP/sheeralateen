@@ -286,10 +286,10 @@ function statusBadge($s) {
 /* Single-line filter bar styling */
 .filter-bar-card {
     margin-bottom: 20px;
-    border-radius: 12px;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 2px 12px -2px rgba(15, 23, 42, 0.04);
-    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #E8ECF2;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    background: #ffffff;
 }
 .filter-bar-card .card-body {
     padding: 12px 18px;
@@ -311,7 +311,7 @@ function statusBadge($s) {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.4px;
-    color: #64748b;
+    color: #778399;
     margin: 0;
     white-space: nowrap;
 }
@@ -342,10 +342,10 @@ function statusBadge($s) {
 .filter-bar-form .form-control {
     height: 38px;
     font-size: 13px;
-    border-radius: 6px;
-    border: 1px solid #cbd5e1;
-    background: #fff;
-    color: #1e293b;
+    border-radius: 8px;
+    border: 1px solid #E8ECF2;
+    background: #ffffff;
+    color: #172033;
     width: 100%;
 }
 .filter-bar-form .form-control:focus {
@@ -363,7 +363,7 @@ function statusBadge($s) {
     padding: 0 16px;
     font-size: 12.5px;
     font-weight: 600;
-    border-radius: 6px;
+    border-radius: 8px;
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -373,23 +373,23 @@ function statusBadge($s) {
     height: 38px;
     padding: 0 12px;
     font-size: 12.5px;
-    border-radius: 6px;
+    border-radius: 8px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: #64748b;
-    border-color: #cbd5e1;
+    color: #778399;
+    border: 1px solid #E8ECF2;
     white-space: nowrap;
 }
 .filter-actions .btn-clear:hover {
-    background: #f8fafc;
-    color: #0f172a;
+    background: #F8FAFC;
+    color: #172033;
 }
 .orders-table-card {
-    border-radius: 12px;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
-    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #E8ECF2;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+    background: #ffffff;
     overflow: hidden;
 }
 
@@ -398,34 +398,39 @@ function statusBadge($s) {
     border-collapse: separate;
     border-spacing: 0;
     font-size: 12.5px;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     table-layout: auto;
+    background: #ffffff;
 }
 
 .orders-table th {
-    background: #f8fafc;
-    color: #64748b;
+    background: #F8FAFC;
+    color: #778399;
     font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    padding: 9px 8px;
-    border-bottom: 1px solid #e2e8f0;
+    padding: 10px 10px;
+    border-bottom: 1px solid #E8ECF2;
     white-space: nowrap;
 }
 
-.orders-table td {
-    padding: 8px 8px;
-    border-bottom: 1px solid #f1f5f9;
-    color: #1e293b;
-    vertical-align: middle;
-}
-
 .orders-table tbody tr {
+    height: 56px;
     transition: background 0.15s ease;
 }
 
+.orders-table td {
+    padding: 8px 10px;
+    height: 56px;
+    border-bottom: 1px solid #E8ECF2;
+    color: #172033;
+    vertical-align: middle;
+    box-sizing: border-box;
+}
+
 .orders-table tbody tr:hover td {
-    background: #f8fafc;
+    background: #F8FAFC;
 }
 
 .orders-table tr:last-child td {
@@ -506,44 +511,46 @@ function statusBadge($s) {
 
 /* Column specific widths & alignment */
 .col-order-num {
-    width: 75px;
+    width: 80px;
     white-space: nowrap;
 }
 .order-num-pill {
     display: inline-flex;
     align-items: center;
-    background: #f1f5f9;
-    color: #0f172a;
-    padding: 1px 6px;
-    border-radius: 5px;
-    border: 1px solid #e2e8f0;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    background: #F8FAFC;
+    color: #172033;
+    padding: 2px 7px;
+    border-radius: 6px;
+    border: 1px solid #E8ECF2;
+    font-family: 'Inter', ui-monospace, monospace;
     font-size: 12px;
     font-weight: 700;
 }
 
 .col-date {
-    width: 105px;
+    width: 110px;
     white-space: nowrap;
-    line-height: 1.25;
+    line-height: 1.3;
 }
 .date-primary {
     font-weight: 600;
-    color: #1e293b;
+    color: #172033;
     font-size: 12px;
 }
 .date-time {
-    font-size: 11px;
-    color: #64748b;
+    font-size: 10.5px;
+    color: #778399;
+    font-weight: 400;
+    margin-top: 1px;
 }
 
 .col-customer {
-    max-width: 135px;
-    line-height: 1.25;
+    max-width: 140px;
+    line-height: 1.3;
 }
 .customer-name {
     font-weight: 600;
-    color: #0f172a;
+    color: #172033;
     font-size: 12px;
     white-space: nowrap;
     overflow: hidden;
@@ -551,52 +558,64 @@ function statusBadge($s) {
 }
 .customer-phone {
     font-size: 11px;
-    color: #64748b;
-    font-family: ui-monospace, monospace;
+    color: #778399;
+    font-family: 'Inter', ui-monospace, monospace;
+    margin-top: 1px;
 }
 
 /* Branch column replacing Items in admin panel */
 .col-branch {
-    max-width: 130px;
-    line-height: 1.25;
+    max-width: 135px;
+    line-height: 1.3;
 }
 .branch-pill {
     display: inline-flex;
     align-items: center;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 5px;
-    padding: 2.5px 7px;
+    background: #F8FAFC;
+    border: 1px solid #E8ECF2;
+    border-radius: 6px;
+    padding: 2.5px 8px;
     font-size: 11.5px;
     font-weight: 600;
-    color: #334155;
+    color: #172033;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 100%;
 }
 .branch-pill.unassigned {
-    color: #94a3b8;
+    color: #778399;
     background: #fdfdfe;
     border-style: dashed;
 }
 
 .col-total {
-    width: 95px;
+    width: 115px;
     white-space: nowrap;
-    line-height: 1.25;
+    line-height: 1.3;
 }
 .total-amount {
     font-weight: 700;
-    color: #0f172a;
-    font-size: 12.5px;
+    color: #172033;
+    font-size: 13px;
+    letter-spacing: -0.2px;
+    white-space: nowrap;
+    display: block;
 }
 .shipping-tag {
-    font-size: 10.5px;
-    color: #64748b;
+    font-size: 11px;
+    color: #778399;
+    font-weight: 400;
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 4px;
+    margin-top: 2px;
+    white-space: nowrap;
+}
+.shipping-tag i {
+    color: #94a3b8;
+    font-size: 10px;
+    opacity: 0.85;
 }
 
 .col-payment {
@@ -872,7 +891,7 @@ function statusBadge($s) {
                         <div class="total-amount"><?= get_setting($db, 'currency_symbol', 'SAR') . ' ' . number_format($order['total_amount'], 2) ?></div>
                         <?php if (isset($order['shipping_fee']) && (float)$order['shipping_fee'] > 0): ?>
                             <div class="shipping-tag" title="Shipping Fee">
-                                <i class="fa-solid fa-truck" style="font-size: 0.65rem;"></i> +<?= number_format($order['shipping_fee'], 2) ?> ship
+                                <i class="fa-solid fa-truck"></i> +<?= number_format($order['shipping_fee'], 2) ?> shipping
                             </div>
                         <?php endif; ?>
                     </td>
