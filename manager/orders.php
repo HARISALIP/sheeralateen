@@ -665,15 +665,14 @@ function statusBadge($s) {
 
 .col-action {
     width: 215px;
-    text-align: right;
+    text-align: center !important;
     white-space: nowrap;
-    padding-right: 16px !important;
 }
 
 .action-cell-wrap {
     display: inline-flex;
     align-items: center;
-    justify-content: flex-end;
+    justify-content: center;
     gap: 6px;
     min-width: 190px;
 }
@@ -894,7 +893,7 @@ function statusBadge($s) {
                     <th class="col-total">Total</th>
                     <th class="col-payment" style="text-align: center;">Payment</th>
                     <th class="col-status" style="text-align: center;">Order Status</th>
-                    <th class="col-action" style="text-align: right; padding-right: 32px;">Action</th>
+                    <th class="col-action" style="text-align: center;">Action</th>
                 </tr>
             </thead>
             <tbody>
