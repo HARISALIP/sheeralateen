@@ -241,24 +241,27 @@ function statusBadge($s) {
     <div class="alert alert-danger" id="flash-error"><i class="fa-solid fa-triangle-exclamation"></i> <?= e($msg) ?></div>
 <?php endif; ?>
 
-<!-- Filters -->
-<div class="card" style="margin-bottom: 24px;">
+<!-- Filters (Single Line Row) -->
+<div class="card filter-bar-card">
     <div class="card-body">
-        <form method="GET" action="orders.php" style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end;">
-            <div class="form-group" style="flex: 2; min-width: 250px;">
+        <form method="GET" action="orders.php" class="filter-bar-form">
+            <div class="filter-field field-search">
                 <label for="search">Search Orders</label>
-                <input type="text" name="search" id="search" class="form-control" value="<?= e($search) ?>" placeholder="Order #, Name, Phone">
+                <div class="input-with-icon">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" name="search" id="search" class="form-control" value="<?= e($search) ?>" placeholder="Order #, Name, Phone">
+                </div>
             </div>
-            <div class="form-group" style="flex: 1; min-width: 150px;">
+            <div class="filter-field field-select">
                 <label for="payment">Payment Status</label>
                 <select name="payment" id="payment" class="form-control">
-                    <option value="">All</option>
+                    <option value="">All Payments</option>
                     <option value="pending" <?= $filterPayment === 'pending' ? 'selected' : '' ?>>Pending</option>
                     <option value="paid" <?= $filterPayment === 'paid' ? 'selected' : '' ?>>Paid</option>
                     <option value="refunded" <?= $filterPayment === 'refunded' ? 'selected' : '' ?>>Refunded</option>
                 </select>
             </div>
-            <div class="form-group" style="flex: 1; min-width: 150px;">
+            <div class="filter-field field-select">
                 <label for="status">Order Status</label>
                 <select name="status" id="status" class="form-control">
                     <option value="">All Statuses</option>
@@ -267,10 +270,12 @@ function statusBadge($s) {
                     <?php endforeach; ?>
                 </select>
             </div>
-            <div class="form-group" style="flex: 0 0 auto; display: flex; gap: 8px;">
-                <button type="submit" class="btn btn-primary">Filter</button>
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-primary btn-filter">
+                    <i class="fa-solid fa-filter"></i> Filter
+                </button>
                 <?php if ($search || $filterStatus || $filterPayment): ?>
-                <a href="orders.php" class="btn btn-outline">Clear</a>
+                <a href="orders.php" class="btn btn-outline btn-clear" title="Clear Filters">Clear</a>
                 <?php endif; ?>
             </div>
         </form>
@@ -278,6 +283,108 @@ function statusBadge($s) {
 </div>
 
 <style>
+/* Single-line filter bar styling */
+.filter-bar-card {
+    margin-bottom: 20px;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 12px -2px rgba(15, 23, 42, 0.04);
+    background: #fff;
+}
+.filter-bar-card .card-body {
+    padding: 12px 18px;
+}
+.filter-bar-form {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 12px;
+    width: 100%;
+}
+.filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.filter-field label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #64748b;
+    margin: 0;
+    white-space: nowrap;
+}
+.filter-field.field-search {
+    flex: 2;
+    min-width: 180px;
+}
+.filter-field.field-select {
+    flex: 1.2;
+    min-width: 130px;
+}
+.input-with-icon {
+    position: relative;
+    width: 100%;
+}
+.input-with-icon i {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    font-size: 13px;
+    pointer-events: none;
+}
+.input-with-icon input {
+    padding-left: 32px !important;
+}
+.filter-bar-form .form-control {
+    height: 38px;
+    font-size: 13px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #1e293b;
+    width: 100%;
+}
+.filter-bar-form .form-control:focus {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+.filter-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+.filter-actions .btn-filter {
+    height: 38px;
+    padding: 0 16px;
+    font-size: 12.5px;
+    font-weight: 600;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+.filter-actions .btn-clear {
+    height: 38px;
+    padding: 0 12px;
+    font-size: 12.5px;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+    border-color: #cbd5e1;
+    white-space: nowrap;
+}
+.filter-actions .btn-clear:hover {
+    background: #f8fafc;
+    color: #0f172a;
+}
 .orders-table-card {
     border-radius: 12px;
     border: 1px solid #e2e8f0;
