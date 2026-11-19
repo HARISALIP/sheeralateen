@@ -50,7 +50,14 @@ function get_setting(PDO $db, string $key, string $default = ''): string
     );
     $stmt->execute([':key' => $key]);
     $result = $stmt->fetchColumn();
-    return ($result !== false && $result !== null) ? (string) $result : $default;
+    if ($result !== false && $result !== null) {
+        if ($key === 'currency_symbol' && (string) $result === '₹') {
+            save_setting($db, 'currency_symbol', 'SAR');
+            return 'SAR';
+        }
+        return (string) $result;
+    }
+    return $default;
 }
 
 /**

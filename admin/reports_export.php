@@ -82,7 +82,7 @@ fputcsv($out, [
     'Delivered',
     'Cancelled',
     'Returned',
-    'Total Revenue',
+    'Total Revenue (SAR)',
 ]);
 
 // Data rows

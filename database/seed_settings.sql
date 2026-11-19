@@ -16,7 +16,7 @@ INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES
   ('company_address',      ''),
   ('company_logo',         ''),
   ('company_favicon',      ''),
-  ('currency_symbol',      '₹'),
+  ('currency_symbol',      'SAR'),
   ('orders_per_page',      '25'),
   ('timezone',             'Asia/Kolkata'),
   ('branch_auto_assign',   '0'),

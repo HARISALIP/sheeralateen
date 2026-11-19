@@ -54,6 +54,11 @@ $revStmt = $db->prepare("
 ");
 $revStmt->execute([':from' => $dateFrom . ' 00:00:00', ':to' => $dateToFull]);
 $periodRevenue = (float) $revStmt->fetchColumn();
+$currencySymbol = get_setting($db, 'currency_symbol', 'SAR');
+if ($currencySymbol === '₹') {
+    $currencySymbol = 'SAR';
+    save_setting($db, 'currency_symbol', 'SAR');
+}
 
 /* ──────────────────────────────────────────────────────────
    ORDERS BY BRANCH (date-filtered)
@@ -221,9 +226,9 @@ require_once __DIR__ . '/includes/topbar.php';
 </div>
 <div class="reports-grid" style="grid-template-columns:1fr;margin-bottom:24px;">
     <div class="stat-card">
-        <div class="stat-icon warning"><i class="fa-solid fa-indian-rupee-sign"></i></div>
+        <div class="stat-icon warning" style="font-weight: 800; font-size: 14px; letter-spacing: 0.5px;"><?= e($currencySymbol) ?></div>
         <div class="stat-details">
-            <h3><?= number_format($periodRevenue, 2) ?></h3>
+            <h3><span style="font-size: 16px; font-weight: 600; color: var(--text-muted); margin-right: 4px;"><?= e($currencySymbol) ?></span><?= number_format($periodRevenue, 2) ?></h3>
             <p>Revenue (period)</p>
         </div>
     </div>
@@ -314,7 +319,7 @@ require_once __DIR__ . '/includes/topbar.php';
                     <th>Total Orders</th>
                     <th>Delivered</th>
                     <th>Cancelled</th>
-                    <th>Revenue</th>
+                    <th>Revenue (<?= e($currencySymbol) ?>)</th>
                 </tr>
             </thead>
             <tbody>

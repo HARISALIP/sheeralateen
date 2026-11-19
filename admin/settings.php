@@ -365,7 +365,7 @@ $timezones = [
                         <label for="currency_symbol">Currency Symbol</label>
                         <input type="text" name="currency_symbol" id="currency_symbol"
                                class="form-control" value="<?= e($s['currency_symbol']) ?>" maxlength="5">
-                        <span class="upload-hint">e.g. ₹, $, €, AED</span>
+                        <span class="upload-hint">e.g. SAR, ر.س, $, €</span>
                     </div>
                     <div class="form-group">
                         <label for="timezone">Timezone</label>
