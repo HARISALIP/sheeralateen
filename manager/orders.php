@@ -270,7 +270,7 @@ function statusBadge($s) {
                 <label for="status">Order Status</label>
                 <select name="status" id="status" class="form-control">
                     <option value="">All Statuses</option>
-                    <?php foreach(array_unique(array_merge(['New','Ready','Out For Delivery','Cancelled'], [$order['current_status']])) as $st): ?>
+                    <?php foreach(['New','Ready','Out For Delivery','Cancelled'] as $st): ?>
                         <option value="<?= $st ?>" <?= $filterStatus === $st ? 'selected' : '' ?>><?= $st ?></option>
                     <?php endforeach; ?>
                 </select>
@@ -285,78 +285,314 @@ function statusBadge($s) {
     </div>
 </div>
 
-<!-- Data Table -->
-<div class="card">
+<!-- Modern Compact Data Table -->
+<style>
+.orders-table-card {
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
+    background: #fff;
+    overflow: hidden;
+}
+
+.orders-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 13.5px;
+}
+
+.orders-table th {
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    padding: 12px 14px;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
+
+.orders-table td {
+    padding: 11px 14px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #1e293b;
+    vertical-align: middle;
+}
+
+.orders-table tbody tr {
+    transition: background 0.15s ease;
+}
+
+.orders-table tbody tr:hover td {
+    background: #f8fafc;
+}
+
+.orders-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* Column specific widths & alignment */
+.col-order-num {
+    width: 95px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: #0f172a;
+}
+.order-num-pill {
+    display: inline-flex;
+    align-items: center;
+    background: #f1f5f9;
+    color: #0f172a;
+    padding: 2px 7px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+}
+
+.col-date {
+    width: 135px;
+    white-space: nowrap;
+    line-height: 1.35;
+}
+.date-primary {
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 13px;
+}
+.date-time {
+    font-size: 11.5px;
+    color: #64748b;
+}
+
+.col-customer {
+    min-width: 140px;
+    max-width: 180px;
+    line-height: 1.35;
+}
+.customer-name {
+    font-weight: 600;
+    color: #0f172a;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.customer-phone {
+    font-size: 12px;
+    color: #64748b;
+    font-family: ui-monospace, monospace;
+}
+
+.col-items {
+    min-width: 170px;
+    max-width: 240px;
+}
+.item-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 2.5px 8px;
+    margin-bottom: 3px;
+    max-width: 100%;
+}
+.item-qty {
+    font-weight: 800;
+    font-size: 11.5px;
+    color: #4f46e5;
+    background: #eef2ff;
+    padding: 1px 5px;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+.item-name {
+    font-size: 12.5px;
+    color: #334155;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.item-more {
+    font-size: 11px;
+    color: #64748b;
+    margin-left: 2px;
+    font-weight: 500;
+}
+
+.col-total {
+    width: 115px;
+    white-space: nowrap;
+    line-height: 1.35;
+}
+.total-amount {
+    font-weight: 700;
+    color: #0f172a;
+    font-size: 13.5px;
+}
+.shipping-tag {
+    font-size: 11px;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.col-payment {
+    width: 95px;
+    white-space: nowrap;
+}
+
+.col-status {
+    width: 120px;
+    white-space: nowrap;
+}
+
+.col-action {
+    width: 175px;
+    text-align: right;
+    white-space: nowrap;
+}
+
+/* Polished modern action buttons */
+.btn-action-ready {
+    background: #10b981 !important;
+    border: 1px solid #059669 !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    padding: 5px 12px !important;
+    border-radius: 6px !important;
+    box-shadow: 0 1px 2px rgba(16, 185, 129, 0.2);
+    transition: all 0.15s ease;
+}
+.btn-action-ready:hover {
+    background: #059669 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(16, 185, 129, 0.25);
+}
+
+.btn-action-cancel {
+    background: #fef2f2 !important;
+    border: 1px solid #fecaca !important;
+    color: #dc2626 !important;
+    font-weight: 600 !important;
+    padding: 5px 12px !important;
+    border-radius: 6px !important;
+    transition: all 0.15s ease;
+}
+.btn-action-cancel:hover {
+    background: #fee2e2 !important;
+    border-color: #fca5a5 !important;
+    color: #b91c1c !important;
+}
+
+.btn-action-reready {
+    background: #fffbeb !important;
+    border: 1px solid #fde68a !important;
+    color: #b45309 !important;
+    font-weight: 600 !important;
+    padding: 5px 12px !important;
+    border-radius: 6px !important;
+    transition: all 0.15s ease;
+}
+.btn-action-reready:hover {
+    background: #fef3c7 !important;
+    border-color: #fcd34d !important;
+    color: #92400e !important;
+}
+
+.btn-action-view {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #475569 !important;
+    font-weight: 500 !important;
+    padding: 5px 11px !important;
+    border-radius: 6px !important;
+    transition: all 0.15s ease;
+}
+.btn-action-view:hover {
+    background: #f8fafc !important;
+    border-color: #94a3b8 !important;
+    color: #0f172a !important;
+}
+</style>
+
+<div class="card orders-table-card">
     <div class="table-responsive">
-        <table class="table">
+        <table class="orders-table">
             <thead>
                 <tr>
-                    <th>Order #</th>
-                    <th>Date</th>
-                    <th>Customer</th>
-                    <th>Items</th>
-                    <th>Total</th>
-                    <th>Payment</th>
-                    <th>Order Status</th>
-                    <th class="text-right">Action</th>
+                    <th class="col-order-num">Order #</th>
+                    <th class="col-date">Date</th>
+                    <th class="col-customer">Customer</th>
+                    <th class="col-items">Items</th>
+                    <th class="col-total">Total</th>
+                    <th class="col-payment">Payment</th>
+                    <th class="col-status">Order Status</th>
+                    <th class="col-action">Action</th>
                 </tr>
             </thead>
             <tbody>
             <?php if (empty($orders)): ?>
                 <tr>
-                    <td colspan="8" class="empty-state">
-                        <i class="fa-solid fa-box-open"></i>
+                    <td colspan="8" class="empty-state" style="padding: 40px 20px; text-align: center; color: var(--text-muted);">
+                        <i class="fa-solid fa-box-open" style="font-size: 28px; margin-bottom: 8px; display: block; opacity: 0.5;"></i>
                         No orders found.
                     </td>
                 </tr>
             <?php else: ?>
                 <?php foreach ($orders as $order): ?>
                 <tr>
-                    <td>
-                        <strong><?= e($order['order_number']) ?></strong>
+                    <td class="col-order-num">
+                        <span class="order-num-pill"><?= e($order['order_number']) ?></span>
                         <?php if ($order['shopify_order_number'] && $order['shopify_order_number'] !== $order['order_number']): ?>
-                            <br><small class="text-muted">Shopify: <?= e($order['shopify_order_number']) ?></small>
+                            <div style="font-size: 11px; color: var(--text-muted); font-weight: normal; margin-top: 2px;">Shopify: <?= e($order['shopify_order_number']) ?></div>
                         <?php endif; ?>
                     </td>
-                    <td>
-                        <?= date('M d, Y', strtotime($order['created_at'])) ?><br>
-                        <small class="text-muted"><?= date('h:i A', strtotime($order['created_at'])) ?></small>
+                    <td class="col-date">
+                        <div class="date-primary"><?= date('M d, Y', strtotime($order['created_at'])) ?></div>
+                        <div class="date-time"><?= date('h:i A', strtotime($order['created_at'])) ?></div>
                     </td>
-                    <td>
-                        <?= e($order['customer_name']) ?><br>
-                        <small class="text-muted"><?= htmlspecialchars($order['customer_phone'] ?? '') ?></small>
+                    <td class="col-customer">
+                        <div class="customer-name" title="<?= e($order['customer_name']) ?>"><?= e($order['customer_name']) ?></div>
+                        <div class="customer-phone"><?= htmlspecialchars($order['customer_phone'] ?? '') ?></div>
                     </td>
-                    <td style="max-width: 240px;">
+                    <td class="col-items">
                         <?php 
                         $orderItemList = $itemsByOrder[$order['id']] ?? [];
                         if (!empty($orderItemList)): 
                             $shownItems = array_slice($orderItemList, 0, 2);
                             $remaining = count($orderItemList) - count($shownItems);
                         ?>
-                            <div style="font-size: 13px; line-height: 1.45;">
+                            <div>
                                 <?php foreach ($shownItems as $it): ?>
-                                    <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="<?= e($it['item_name']) ?>">
-                                        <span style="display:inline-block; min-width: 20px; font-weight: 700; color: var(--primary);"><?= (int)$it['quantity'] ?>x</span>
-                                        <span><?= e($it['item_name']) ?></span>
+                                    <div class="item-chip" title="<?= e($it['item_name']) ?>">
+                                        <span class="item-qty"><?= (int)$it['quantity'] ?>x</span>
+                                        <span class="item-name"><?= e($it['item_name']) ?></span>
                                     </div>
                                 <?php endforeach; ?>
                                 <?php if ($remaining > 0): ?>
-                                    <small class="text-muted" title="<?= e(implode(', ', array_map(fn($x) => $x['quantity'] . 'x ' . $x['item_name'], array_slice($orderItemList, 2)))) ?>">
+                                    <span class="item-more" title="<?= e(implode(', ', array_map(fn($x) => $x['quantity'] . 'x ' . $x['item_name'], array_slice($orderItemList, 2)))) ?>">
                                         +<?= $remaining ?> more item<?= $remaining > 1 ? 's' : '' ?>
-                                    </small>
+                                    </span>
                                 <?php endif; ?>
                             </div>
                         <?php else: ?>
                             <span class="text-muted" style="font-size: 12px;">—</span>
                         <?php endif; ?>
                     </td>
-                    <td>
-                        <strong><?= get_setting($db, 'currency_symbol', 'SAR') . ' ' . number_format($order['total_amount'], 2) ?></strong>
+                    <td class="col-total">
+                        <div class="total-amount"><?= get_setting($db, 'currency_symbol', 'SAR') . ' ' . number_format($order['total_amount'], 2) ?></div>
                         <?php if (isset($order['shipping_fee']) && (float)$order['shipping_fee'] > 0): ?>
-                            <br><small class="text-muted" title="Shipping Fee"><i class="fa-solid fa-truck" style="font-size: 0.72rem;"></i> +<?= number_format($order['shipping_fee'], 2) ?> ship</small>
+                            <div class="shipping-tag" title="Shipping Fee">
+                                <i class="fa-solid fa-truck" style="font-size: 0.68rem;"></i> +<?= number_format($order['shipping_fee'], 2) ?> ship
+                            </div>
                         <?php endif; ?>
                     </td>
-                    <td>
+                    <td class="col-payment">
                         <?php
                         $pStatus = $order['payment_status'] ?? 'pending';
                         $pBadgeClass = match($pStatus) {
@@ -367,13 +603,13 @@ function statusBadge($s) {
                         ?>
                         <span class="status <?= $pBadgeClass ?>"><?= ucfirst(str_replace('_', ' ', $pStatus)) ?></span>
                     </td>
-                    <td>
+                    <td class="col-status">
                         <?= statusBadge($order['current_status']) ?>
                     </td>
-                    <td class="text-right">
+                    <td class="col-action">
                         <div style="display:inline-flex; gap:6px; align-items:center; justify-content:flex-end;">
                             <?php if (in_array($order['current_status'], ['New', 'Assigned', 'Accepted', 'Preparing'])): ?>
-                                <button type="button" class="btn btn-sm btn-success btn-action-ready"
+                                <button type="button" class="btn btn-sm btn-action-ready"
                                         data-id="<?= $order['id'] ?>"
                                         data-number="<?= e($order['order_number']) ?>"
                                         data-payment="<?= e($order['payment_status']) ?>"
@@ -381,7 +617,7 @@ function statusBadge($s) {
                                     <i class="fa-solid fa-check"></i> Ready
                                 </button>
                             <?php elseif ($order['current_status'] === 'Ready'): ?>
-                                <button type="button" class="btn btn-sm btn-danger btn-action-cancel"
+                                <button type="button" class="btn btn-sm btn-action-cancel"
                                         data-id="<?= $order['id'] ?>"
                                         data-number="<?= e($order['order_number']) ?>"
                                         data-payment="<?= e($order['payment_status']) ?>"
@@ -389,7 +625,7 @@ function statusBadge($s) {
                                     <i class="fa-solid fa-xmark"></i> Cancel
                                 </button>
                             <?php elseif ($order['current_status'] === 'Cancelled'): ?>
-                                <button type="button" class="btn btn-sm btn-warning btn-action-reready"
+                                <button type="button" class="btn btn-sm btn-action-reready"
                                         data-id="<?= $order['id'] ?>"
                                         data-number="<?= e($order['order_number']) ?>"
                                         data-payment="<?= e($order['payment_status']) ?>"
@@ -398,7 +634,7 @@ function statusBadge($s) {
                                 </button>
                             <?php endif; ?>
 
-                            <a href="order_details.php?id=<?= $order['id'] ?>" class="btn btn-sm btn-outline">View</a>
+                            <a href="order_details.php?id=<?= $order['id'] ?>" class="btn btn-sm btn-action-view">View</a>
                         </div>
                     </td>
                 </tr>
