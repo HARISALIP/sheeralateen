@@ -51,8 +51,9 @@
     --shadow-modal: 0 32px 64px rgba(15,23,42,0.2);
 
     /* Dimensions */
-    --sidebar-width:    260px;
-    --topbar-height:    68px;
+    --sidebar-width:            215px;
+    --sidebar-collapsed-width:  68px;
+    --topbar-height:            64px;
 
     /* Radii */
     --radius-xs:  4px;
@@ -123,7 +124,7 @@ img, svg { display: block; }
     bottom: 0;
     left: 0;
     z-index: 300;
-    transition: transform var(--transition);
+    transition: transform var(--transition), width 0.25s ease;
     overflow: hidden;
 }
 
@@ -235,6 +236,148 @@ img, svg { display: block; }
 .sidebar-logout i { font-size: 15px; }
 
 /* ─────────────────────────────────────────────────────────────
+   4.1 COLLAPSED / MINI SIDEBAR
+───────────────────────────────────────────────────────────── */
+.sidebar-collapsed .sidebar {
+    width: var(--sidebar-collapsed-width);
+}
+.sidebar-collapsed .main-wrapper {
+    margin-left: var(--sidebar-collapsed-width);
+}
+.sidebar-collapsed .sidebar-header {
+    padding: 0;
+    justify-content: center;
+}
+.sidebar-collapsed .sidebar-brand {
+    font-size: 18px;
+    text-align: center;
+}
+.sidebar-collapsed .sidebar-brand .brand-full {
+    display: none;
+}
+.sidebar-collapsed .sidebar-brand .brand-short {
+    display: inline-block;
+}
+.sidebar-collapsed .sidebar-nav {
+    padding: 10px 0;
+}
+.sidebar-collapsed .nav-section-label {
+    display: none;
+}
+.sidebar-collapsed .nav-item {
+    padding: 12px 0;
+    justify-content: center;
+    border-left-width: 3px;
+}
+.sidebar-collapsed .nav-item i {
+    margin-right: 0;
+    font-size: 17px;
+}
+.sidebar-collapsed .nav-item span {
+    display: none;
+}
+.sidebar-collapsed .sidebar-footer {
+    padding: 14px 8px;
+}
+.sidebar-collapsed .sidebar-logout {
+    padding: 10px 0;
+    justify-content: center;
+}
+.sidebar-collapsed .sidebar-logout span {
+    display: none;
+}
+.sidebar-collapsed .sidebar-logout i {
+    margin: 0;
+    font-size: 16px;
+}
+
+/* Auto-collapse on medium screens / split screen viewports */
+@media (min-width: 769px) and (max-width: 1180px) {
+    :root {
+        --sidebar-width: var(--sidebar-collapsed-width);
+    }
+    .sidebar {
+        width: var(--sidebar-collapsed-width);
+    }
+    .main-wrapper {
+        margin-left: var(--sidebar-collapsed-width);
+    }
+    .sidebar-header {
+        padding: 0;
+        justify-content: center;
+    }
+    .sidebar-brand .brand-full {
+        display: none;
+    }
+    .sidebar-brand .brand-short {
+        display: inline-block;
+    }
+    .nav-section-label {
+        display: none;
+    }
+    .nav-item {
+        padding: 12px 0;
+        justify-content: center;
+    }
+    .nav-item i {
+        margin-right: 0;
+        font-size: 17px;
+    }
+    .nav-item span {
+        display: none;
+    }
+    .sidebar-footer {
+        padding: 14px 8px;
+    }
+    .sidebar-logout {
+        padding: 10px 0;
+        justify-content: center;
+    }
+    .sidebar-logout span {
+        display: none;
+    }
+    .sidebar-logout i {
+        margin: 0;
+        font-size: 16px;
+    }
+    
+    /* When user manually forces expansion in medium screen */
+    body.sidebar-expanded .sidebar {
+        width: 215px !important;
+    }
+    body.sidebar-expanded .main-wrapper {
+        margin-left: 215px !important;
+    }
+    body.sidebar-expanded .sidebar-header {
+        padding: 0 20px !important;
+        justify-content: flex-start !important;
+    }
+    body.sidebar-expanded .sidebar-brand .brand-full {
+        display: inline-block !important;
+    }
+    body.sidebar-expanded .sidebar-brand .brand-short {
+        display: none !important;
+    }
+    body.sidebar-expanded .nav-item {
+        padding: 10px 18px !important;
+        justify-content: flex-start !important;
+    }
+    body.sidebar-expanded .nav-item i {
+        margin-right: 12px !important;
+    }
+    body.sidebar-expanded .nav-item span {
+        display: inline-block !important;
+    }
+    body.sidebar-expanded .sidebar-logout {
+        padding: 10px 14px !important;
+        justify-content: flex-start !important;
+    }
+    body.sidebar-expanded .sidebar-logout span {
+        display: inline-block !important;
+    }
+}
+
+/* ─────────────────────────────────────────────────────────────
    5. MAIN WRAPPER
 ───────────────────────────────────────────────────────────── */
 .main-wrapper {
@@ -243,7 +386,7 @@ img, svg { display: block; }
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    transition: margin-left var(--transition);
+    transition: margin-left 0.25s ease;
     min-width: 0;
 }
 
@@ -273,12 +416,16 @@ img, svg { display: block; }
 }
 
 .menu-toggle {
-    display: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
     background: none;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
-    padding: 6px 10px;
-    font-size: 18px;
+    padding: 0;
+    font-size: 15px;
     color: var(--text-muted);
     cursor: pointer;
     transition: all var(--transition-fast);
@@ -287,6 +434,7 @@ img, svg { display: block; }
 .menu-toggle:hover {
     background: var(--bg-main);
     color: var(--primary);
+    border-color: var(--primary);
 }
 
 .topbar-right {

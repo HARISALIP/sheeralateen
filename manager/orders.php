@@ -606,10 +606,31 @@ function statusBadge($s) {
     background: #f8fafc !important;
     color: #0f172a !important;
 }
+
+.orders-table-card .table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+}
+.orders-table-card .table-responsive::-webkit-scrollbar {
+    height: 5px;
+}
+.orders-table-card .table-responsive::-webkit-scrollbar-track {
+    background: transparent;
+}
+.orders-table-card .table-responsive::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+.orders-table-card .table-responsive::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
 </style>
 
 <div class="card orders-table-card">
-    <div class="table-responsive" style="overflow-x: hidden;">
+    <div class="table-responsive">
         <table class="orders-table">
             <thead>
                 <tr>

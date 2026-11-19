@@ -22,6 +22,12 @@
     
     <!-- Admin CSS -->
     <link rel="stylesheet" href="../assets/css/admin.css?v=<?= filemtime(__DIR__ . '/../../assets/css/admin.css') ?>">
+
+    <script>
+        if (localStorage.getItem('sidebar_collapsed') === '1' && window.innerWidth > 768) {
+            document.documentElement.classList.add('sidebar-collapsed');
+        }
+    </script>
 </head>
 <body>
     <div class="admin-layout">
