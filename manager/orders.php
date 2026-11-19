@@ -643,74 +643,190 @@ function statusBadge($s) {
 }
 
 .col-action {
-    width: 150px;
-    text-align: center;
+    width: 205px;
+    text-align: right;
     white-space: nowrap;
+    padding-right: 14px !important;
 }
 
-/* Compact high-precision action buttons */
+.action-cell-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 7px;
+    min-width: 190px;
+}
+
+.action-step-slot {
+    width: 104px;
+    display: flex;
+    justify-content: flex-end;
+    flex-shrink: 0;
+}
+
+/* Rounded Pill Action Buttons Matching Mockup */
 .btn-action-ready {
-    background: #10b981 !important;
-    border: 1px solid #059669 !important;
-    color: #ffffff !important;
-    font-weight: 600 !important;
+    background: #ffffff !important;
+    border: 1px solid #86efac !important;
+    color: #16a34a !important;
+    font-weight: 500 !important;
     font-size: 11.5px !important;
-    padding: 4px 9px !important;
-    border-radius: 5px !important;
-    gap: 4px !important;
-    box-shadow: 0 1px 2px rgba(16, 185, 129, 0.2);
-    transition: all 0.15s ease;
+    padding: 3.5px 11px !important;
+    border-radius: 20px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    white-space: nowrap !important;
+    transition: all 0.15s ease !important;
 }
 .btn-action-ready:hover {
-    background: #059669 !important;
-    transform: translateY(-1px);
+    background: #f0fdf4 !important;
+    border-color: #22c55e !important;
+    color: #15803d !important;
 }
 
 .btn-action-cancel {
-    background: #fef2f2 !important;
-    border: 1px solid #fecaca !important;
+    background: #ffffff !important;
+    border: 1px solid #fca5a5 !important;
     color: #dc2626 !important;
-    font-weight: 600 !important;
+    font-weight: 500 !important;
     font-size: 11.5px !important;
-    padding: 4px 8px !important;
-    border-radius: 5px !important;
-    gap: 4px !important;
-    transition: all 0.15s ease;
+    padding: 3.5px 11px !important;
+    border-radius: 20px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    white-space: nowrap !important;
+    transition: all 0.15s ease !important;
 }
 .btn-action-cancel:hover {
-    background: #fee2e2 !important;
+    background: #fef2f2 !important;
+    border-color: #ef4444 !important;
     color: #b91c1c !important;
 }
 
 .btn-action-reready {
-    background: #fffbeb !important;
-    border: 1px solid #fde68a !important;
-    color: #b45309 !important;
-    font-weight: 600 !important;
+    background: #ffffff !important;
+    border: 1px solid #93c5fd !important;
+    color: #2563eb !important;
+    font-weight: 500 !important;
     font-size: 11.5px !important;
-    padding: 4px 8px !important;
-    border-radius: 5px !important;
-    gap: 4px !important;
-    transition: all 0.15s ease;
+    padding: 3.5px 11px !important;
+    border-radius: 20px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    white-space: nowrap !important;
+    transition: all 0.15s ease !important;
 }
 .btn-action-reready:hover {
-    background: #fef3c7 !important;
-    color: #92400e !important;
+    background: #eff6ff !important;
+    border-color: #3b82f6 !important;
+    color: #1d4ed8 !important;
 }
 
 .btn-action-view {
     background: #ffffff !important;
     border: 1px solid #cbd5e1 !important;
-    color: #475569 !important;
+    color: #334155 !important;
     font-weight: 500 !important;
     font-size: 11.5px !important;
-    padding: 4px 8px !important;
-    border-radius: 5px !important;
-    transition: all 0.15s ease;
+    padding: 3.5px 13px !important;
+    border-radius: 20px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+    text-decoration: none !important;
+    transition: all 0.15s ease !important;
 }
 .btn-action-view:hover {
     background: #f8fafc !important;
+    border-color: #94a3b8 !important;
     color: #0f172a !important;
+}
+
+/* Three-dots menu */
+.action-menu-wrapper {
+    position: relative;
+    display: inline-flex;
+}
+.btn-action-more {
+    background: transparent;
+    border: none;
+    padding: 4px 6px;
+    color: #64748b;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+.btn-action-more:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+.action-dropdown-menu {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(15, 23, 42, 0.08);
+    min-width: 170px;
+    z-index: 100;
+    padding: 5px;
+    text-align: left;
+}
+.action-dropdown-menu.show {
+    display: block;
+}
+.action-dropdown-menu .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 7px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #334155;
+    text-decoration: none;
+    border: none;
+    background: transparent;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+.action-dropdown-menu .dropdown-item:hover {
+    background: #f8fafc;
+    color: #0f172a;
+}
+.action-dropdown-menu .dropdown-item i {
+    width: 14px;
+    text-align: center;
+    font-size: 12px;
+}
+.action-dropdown-menu .dropdown-divider {
+    height: 1px;
+    background: #f1f5f9;
+    margin: 4px 0;
+}
+.action-dropdown-menu .dropdown-item.text-danger {
+    color: #dc2626;
+}
+.action-dropdown-menu .dropdown-item.text-danger:hover {
+    background: #fef2f2;
+}
+.action-dropdown-menu .dropdown-item.text-primary {
+    color: #2563eb;
+}
+.action-dropdown-menu .dropdown-item.text-primary:hover {
+    background: #eff6ff;
 }
 
 .orders-table-card .table-responsive {
@@ -747,7 +863,7 @@ function statusBadge($s) {
                     <th class="col-total">Total</th>
                     <th class="col-payment" style="text-align: center;">Payment</th>
                     <th class="col-status" style="text-align: center;">Order Status</th>
-                    <th class="col-action" style="text-align: center;">Action</th>
+                    <th class="col-action" style="text-align: right; padding-right: 32px;">Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -824,34 +940,71 @@ function statusBadge($s) {
                         <?= statusBadge($order['current_status']) ?>
                     </td>
                     <td class="col-action">
-                        <div style="display:inline-flex; gap:5px; align-items:center; justify-content:center;">
-                            <?php if (in_array($order['current_status'], ['New', 'Assigned', 'Accepted', 'Preparing'])): ?>
-                                <button type="button" class="btn btn-sm btn-action-ready"
-                                        data-id="<?= $order['id'] ?>"
-                                        data-number="<?= e($order['order_number']) ?>"
-                                        data-payment="<?= e($order['payment_status']) ?>"
-                                        title="Mark order as Ready and dispatch delivery captain in Leajlak">
-                                    <i class="fa-solid fa-check"></i> Ready
-                                </button>
-                            <?php elseif ($order['current_status'] === 'Ready'): ?>
-                                <button type="button" class="btn btn-sm btn-action-cancel"
-                                        data-id="<?= $order['id'] ?>"
-                                        data-number="<?= e($order['order_number']) ?>"
-                                        data-payment="<?= e($order['payment_status']) ?>"
-                                        title="Cancel order and recall Leajlak delivery driver">
-                                    <i class="fa-solid fa-xmark"></i> Cancel
-                                </button>
-                            <?php elseif ($order['current_status'] === 'Cancelled'): ?>
-                                <button type="button" class="btn btn-sm btn-action-reready"
-                                        data-id="<?= $order['id'] ?>"
-                                        data-number="<?= e($order['order_number']) ?>"
-                                        data-payment="<?= e($order['payment_status']) ?>"
-                                        title="Re-dispatch order to Leajlak and mark Ready">
-                                    <i class="fa-solid fa-rotate-right"></i> Re-Dispatch
-                                </button>
-                            <?php endif; ?>
+                        <div class="action-cell-wrap">
+                            <div class="action-step-slot">
+                                <?php if (in_array($order['current_status'], ['New', 'Assigned', 'Accepted', 'Preparing'])): ?>
+                                    <button type="button" class="btn btn-sm btn-action-ready"
+                                            data-id="<?= $order['id'] ?>"
+                                            data-number="<?= e($order['order_number']) ?>"
+                                            data-payment="<?= e($order['payment_status']) ?>"
+                                            title="Mark Ready & Dispatch">
+                                        <i class="fa-solid fa-check"></i> Ready
+                                    </button>
+                                <?php elseif ($order['current_status'] === 'Ready'): ?>
+                                    <button type="button" class="btn btn-sm btn-action-cancel"
+                                            data-id="<?= $order['id'] ?>"
+                                            data-number="<?= e($order['order_number']) ?>"
+                                            data-payment="<?= e($order['payment_status']) ?>"
+                                            title="Cancel Order & Recall Driver">
+                                        <i class="fa-solid fa-xmark"></i> Cancel
+                                    </button>
+                                <?php elseif ($order['current_status'] === 'Cancelled'): ?>
+                                    <button type="button" class="btn btn-sm btn-action-reready"
+                                            data-id="<?= $order['id'] ?>"
+                                            data-number="<?= e($order['order_number']) ?>"
+                                            data-payment="<?= e($order['payment_status']) ?>"
+                                            title="Re-dispatch to Leajlak">
+                                        <i class="fa-solid fa-rotate-right"></i> Re-Dispatch
+                                    </button>
+                                <?php endif; ?>
+                            </div>
 
                             <a href="order_details.php?id=<?= $order['id'] ?>" class="btn btn-sm btn-action-view">View</a>
+
+                            <div class="action-menu-wrapper">
+                                <button type="button" class="btn-action-more" aria-label="More actions" title="More options">
+                                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                                </button>
+                                <div class="action-dropdown-menu">
+                                    <a href="order_details.php?id=<?= $order['id'] ?>" class="dropdown-item">
+                                        <i class="fa-solid fa-file-invoice"></i> Order Details
+                                    </a>
+                                    <a href="order_details.php?id=<?= $order['id'] ?>" target="_blank" class="dropdown-item">
+                                        <i class="fa-solid fa-arrow-up-right-from-square"></i> Open in New Tab
+                                    </a>
+                                    <?php if (!empty($order['customer_phone'])): ?>
+                                        <a href="tel:<?= htmlspecialchars($order['customer_phone']) ?>" class="dropdown-item">
+                                            <i class="fa-solid fa-phone"></i> Call Customer
+                                        </a>
+                                    <?php endif; ?>
+                                    <div class="dropdown-divider"></div>
+                                    <?php if ($order['current_status'] !== 'Cancelled'): ?>
+                                        <button type="button" class="dropdown-item text-danger btn-menu-cancel"
+                                                data-id="<?= $order['id'] ?>"
+                                                data-number="<?= e($order['order_number']) ?>"
+                                                data-payment="<?= e($order['payment_status']) ?>">
+                                            <i class="fa-solid fa-ban"></i> Cancel Order
+                                        </button>
+                                    <?php else: ?>
+                                        <button type="button" class="dropdown-item text-primary btn-menu-reready"
+                                                data-id="<?= $order['id'] ?>"
+                                                data-number="<?= e($order['order_number']) ?>"
+                                                data-payment="<?= e($order['payment_status']) ?>">
+                                            <i class="fa-solid fa-rotate-right"></i> Re-Dispatch
+                                        </button>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
                         </div>
                     </td>
                 </tr>
@@ -1121,6 +1274,48 @@ document.getElementById('modal-reready-order')?.querySelector('form')?.addEventL
         btn.disabled = true;
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Dispatching...';
     }
+});
+
+// 4. Toggle action dropdown menu (three-dots)
+document.querySelectorAll('.btn-action-more').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const menu = this.nextElementSibling;
+        const isOpen = menu.classList.contains('show');
+        document.querySelectorAll('.action-dropdown-menu.show').forEach(m => m.classList.remove('show'));
+        if (!isOpen) {
+            menu.classList.add('show');
+        }
+    });
+});
+
+// Close action dropdowns on clicking anywhere outside
+document.addEventListener('click', function() {
+    document.querySelectorAll('.action-dropdown-menu.show').forEach(m => m.classList.remove('show'));
+});
+
+// Dropdown item: Cancel trigger
+document.querySelectorAll('.btn-menu-cancel').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        document.querySelectorAll('.action-dropdown-menu.show').forEach(m => m.classList.remove('show'));
+        document.getElementById('modal_cancel_order_id').value = this.dataset.id;
+        document.getElementById('modal_cancel_order_number').innerText = this.dataset.number;
+        document.getElementById('modal_cancel_payment_status').value = this.dataset.payment || 'pending';
+        document.getElementById('modal-cancel-order').classList.add('show');
+    });
+});
+
+// Dropdown item: Re-Dispatch trigger
+document.querySelectorAll('.btn-menu-reready').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        document.querySelectorAll('.action-dropdown-menu.show').forEach(m => m.classList.remove('show'));
+        document.getElementById('modal_reready_order_id').value = this.dataset.id;
+        document.getElementById('modal_reready_order_number').innerText = this.dataset.number;
+        document.getElementById('modal_reready_payment_status').value = this.dataset.payment || 'pending';
+        document.getElementById('modal-reready-order').classList.add('show');
+    });
 });
 </script>
 
