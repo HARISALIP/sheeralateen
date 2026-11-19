@@ -33,11 +33,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     
     if ($orderId > 0 && in_array($newStatus, $validStatuses) && in_array($newPaymentStatus, $validPaymentStatuses)) {
         // Fetch order to verify and log
-        $stmt = $db->prepare("SELECT o.order_number, o.shopify_order_id, o.current_status, o.payment_status, o.customer_phone, o.delivery_address, o.total_amount, b.leajlak_shop_id, o.customer_name, o.customer_email, o.leajlak_order_id FROM orders o LEFT JOIN branches b ON o.assigned_branch_id = b.id WHERE o.id = :id AND o.assigned_branch_id = :bid");
+        $stmt = $db->prepare("SELECT o.order_number, o.shopify_order_id, o.current_status, o.payment_status, o.customer_phone, o.delivery_address, o.total_amount, b.leajlak_shop_id, o.customer_name, o.customer_email, o.leajlak_order_id, o.leajlak_status FROM orders o LEFT JOIN branches b ON o.assigned_branch_id = b.id WHERE o.id = :id AND o.assigned_branch_id = :bid");
         $stmt->execute([':id' => $orderId, ':bid' => $branchId]);
         $order = $stmt->fetch();
         
-        if ($order && ($order['current_status'] !== $newStatus || $order['payment_status'] !== $newPaymentStatus)) {
+        $shouldUpdate = $order && (
+            $order['current_status'] !== $newStatus || 
+            $order['payment_status'] !== $newPaymentStatus || 
+            ($newStatus === 'Ready' && in_array(strtolower($order['leajlak_status'] ?? ''), ['canceled', 'cancelled']))
+        );
+
+        if ($shouldUpdate) {
             // 1. Update local database
             $update = $db->prepare("UPDATE orders SET current_status = :status, payment_status = :pstatus, updated_at = NOW() WHERE id = :id");
             $update->execute([':status' => $newStatus, ':pstatus' => $newPaymentStatus, ':id' => $orderId]);
@@ -58,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $leajlakError = '';
             $leajlakCancelWarning = '';
 
-            if ($order['current_status'] !== 'Ready' && $newStatus === 'Ready') {
+            if (($order['current_status'] !== 'Ready' || in_array(strtolower($order['leajlak_status'] ?? ''), ['canceled', 'cancelled'])) && $newStatus === 'Ready') {
                 $leajlak = new LeajlakService($db);
                 $leajlakResult = $leajlak->createOrderFromRow($order);
                 if (!$leajlakResult['success']) {
@@ -196,6 +202,17 @@ $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
 $stmt->execute();
 $orders = $stmt->fetchAll();
 
+// Fetch items for all displayed orders
+$orderIds = array_column($orders, 'id');
+$itemsByOrder = [];
+if (!empty($orderIds)) {
+    $inClause = implode(',', array_map('intval', $orderIds));
+    $itemsStmt = $db->query("SELECT order_id, item_name, quantity FROM order_items WHERE order_id IN ($inClause) ORDER BY id ASC");
+    while ($it = $itemsStmt->fetch(PDO::FETCH_ASSOC)) {
+        $itemsByOrder[$it['order_id']][] = $it;
+    }
+}
+
 // Fetch branches for assignment dropdown (if needed)
 $branches = $db->query("SELECT id, branch_name FROM branches WHERE status='active' AND deleted_at IS NULL ORDER BY branch_name")->fetchAll();
 
@@ -277,6 +294,7 @@ function statusBadge($s) {
                     <th>Order #</th>
                     <th>Date</th>
                     <th>Customer</th>
+                    <th>Items</th>
                     <th>Total</th>
                     <th>Payment</th>
                     <th>Order Status</th>
@@ -286,7 +304,7 @@ function statusBadge($s) {
             <tbody>
             <?php if (empty($orders)): ?>
                 <tr>
-                        <td colspan="7" class="empty-state">
+                    <td colspan="8" class="empty-state">
                         <i class="fa-solid fa-box-open"></i>
                         No orders found.
                     </td>
@@ -306,8 +324,31 @@ function statusBadge($s) {
                     </td>
                     <td>
                         <?= e($order['customer_name']) ?><br>
-                        <?= htmlspecialchars($order['customer_phone'] ?? '') ?>
+                        <small class="text-muted"><?= htmlspecialchars($order['customer_phone'] ?? '') ?></small>
                     </td>
+                    <td style="max-width: 240px;">
+                        <?php 
+                        $orderItemList = $itemsByOrder[$order['id']] ?? [];
+                        if (!empty($orderItemList)): 
+                            $shownItems = array_slice($orderItemList, 0, 2);
+                            $remaining = count($orderItemList) - count($shownItems);
+                        ?>
+                            <div style="font-size: 13px; line-height: 1.45;">
+                                <?php foreach ($shownItems as $it): ?>
+                                    <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="<?= e($it['item_name']) ?>">
+                                        <span style="display:inline-block; min-width: 20px; font-weight: 700; color: var(--primary);"><?= (int)$it['quantity'] ?>x</span>
+                                        <span><?= e($it['item_name']) ?></span>
+                                    </div>
+                                <?php endforeach; ?>
+                                <?php if ($remaining > 0): ?>
+                                    <small class="text-muted" title="<?= e(implode(', ', array_map(fn($x) => $x['quantity'] . 'x ' . $x['item_name'], array_slice($orderItemList, 2)))) ?>">
+                                        +<?= $remaining ?> more item<?= $remaining > 1 ? 's' : '' ?>
+                                    </small>
+                                <?php endif; ?>
+                            </div>
+                        <?php else: ?>
+                            <span class="text-muted" style="font-size: 12px;">—</span>
+                        <?php endif; ?>
                     </td>
                     <td>
                         <strong><?= get_setting($db, 'currency_symbol', 'SAR') . ' ' . number_format($order['total_amount'], 2) ?></strong>
@@ -316,33 +357,49 @@ function statusBadge($s) {
                         <?php endif; ?>
                     </td>
                     <td>
-                        <form method="POST" action="orders.php" style="display:inline; margin:0;" class="inline-update-form">
-                            <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
-                            <input type="hidden" name="action" value="update_status">
-                            <input type="hidden" name="order_id" value="<?= $order['id'] ?>">
-                            <input type="hidden" name="new_status" value="<?= e($order['current_status']) ?>">
-                            <select name="new_payment_status" class="form-control" onchange="this.form.submit()" style="min-width: 110px; padding: 4px 8px; font-size: 13px; height: auto;">
-                                <?php foreach(array_unique(array_merge(["pending", "paid"], [$order["payment_status"]])) as $ps): ?>
-                                    <option value="<?= $ps ?>" <?= $order["payment_status"] === $ps ? "selected" : "" ?>><?= ucfirst(str_replace("_", " ", $ps)) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </form>
+                        <?php
+                        $pStatus = $order['payment_status'] ?? 'pending';
+                        $pBadgeClass = match($pStatus) {
+                            'paid' => 'completed',
+                            'refunded', 'failed' => 'inactive',
+                            default => 'pending'
+                        };
+                        ?>
+                        <span class="status <?= $pBadgeClass ?>"><?= ucfirst(str_replace('_', ' ', $pStatus)) ?></span>
                     </td>
                     <td>
-                        <form method="POST" action="orders.php" style="display:inline; margin:0;" class="inline-update-form">
-                            <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
-                            <input type="hidden" name="action" value="update_status">
-                            <input type="hidden" name="order_id" value="<?= $order['id'] ?>">
-                            <input type="hidden" name="new_payment_status" value="<?= e($order['payment_status']) ?>">
-                            <select name="new_status" class="form-control" onchange="this.form.submit()" style="min-width: 140px; padding: 4px 8px; font-size: 13px; height: auto;">
-                                <?php foreach(array_unique(array_merge(['New','Ready','Out For Delivery','Cancelled'], [$order['current_status']])) as $st): ?>
-                                    <option value="<?= $st ?>" <?= $order['current_status'] === $st ? 'selected' : '' ?>><?= $st ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </form>
+                        <?= statusBadge($order['current_status']) ?>
                     </td>
                     <td class="text-right">
-                        <a href="order_details.php?id=<?= $order['id'] ?>" class="btn btn-sm btn-outline">View</a>
+                        <div style="display:inline-flex; gap:6px; align-items:center; justify-content:flex-end;">
+                            <?php if (in_array($order['current_status'], ['New', 'Assigned', 'Accepted', 'Preparing'])): ?>
+                                <button type="button" class="btn btn-sm btn-success btn-action-ready"
+                                        data-id="<?= $order['id'] ?>"
+                                        data-number="<?= e($order['order_number']) ?>"
+                                        data-payment="<?= e($order['payment_status']) ?>"
+                                        title="Mark order as Ready and dispatch delivery captain in Leajlak">
+                                    <i class="fa-solid fa-check"></i> Ready
+                                </button>
+                            <?php elseif ($order['current_status'] === 'Ready'): ?>
+                                <button type="button" class="btn btn-sm btn-danger btn-action-cancel"
+                                        data-id="<?= $order['id'] ?>"
+                                        data-number="<?= e($order['order_number']) ?>"
+                                        data-payment="<?= e($order['payment_status']) ?>"
+                                        title="Cancel order and recall Leajlak delivery driver">
+                                    <i class="fa-solid fa-xmark"></i> Cancel
+                                </button>
+                            <?php elseif ($order['current_status'] === 'Cancelled'): ?>
+                                <button type="button" class="btn btn-sm btn-warning btn-action-reready"
+                                        data-id="<?= $order['id'] ?>"
+                                        data-number="<?= e($order['order_number']) ?>"
+                                        data-payment="<?= e($order['payment_status']) ?>"
+                                        title="Re-dispatch order to Leajlak and mark Ready">
+                                    <i class="fa-solid fa-rotate-right"></i> Re-Ready
+                                </button>
+                            <?php endif; ?>
+
+                            <a href="order_details.php?id=<?= $order['id'] ?>" class="btn btn-sm btn-outline">View</a>
+                        </div>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -461,6 +518,156 @@ document.querySelectorAll('.btn-retry').forEach(btn => {
             button.innerText = 'Retry';
         }
     });
+});
+</script>
+
+<!-- Hidden form for Quick Direct Dispatch (Ready) -->
+<form id="quick-status-form" method="POST" action="orders.php" style="display:none;">
+    <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
+    <input type="hidden" name="action" value="update_status">
+    <input type="hidden" name="order_id" id="quick_order_id" value="">
+    <input type="hidden" name="new_status" id="quick_new_status" value="">
+    <input type="hidden" name="new_payment_status" id="quick_payment_status" value="pending">
+</form>
+
+<!-- Modal: Cancel Order Confirmation -->
+<div class="modal-overlay" id="modal-cancel-order">
+    <div class="modal-dialog modal-sm">
+        <form method="POST" action="orders.php" class="modal-content">
+            <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
+            <input type="hidden" name="action" value="update_status">
+            <input type="hidden" name="order_id" id="modal_cancel_order_id" value="">
+            <input type="hidden" name="new_status" value="Cancelled">
+            <input type="hidden" name="new_payment_status" id="modal_cancel_payment_status" value="pending">
+            
+            <div class="modal-header">
+                <h3 class="modal-title" style="color: var(--danger); display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Cancel Order
+                </h3>
+                <button type="button" class="modal-close" onclick="closeModal('modal-cancel-order')">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body" style="padding: 20px 24px;">
+                <p style="margin: 0; font-size: 15px; color: var(--text-main);">
+                    Are you sure you want to cancel <strong id="modal_cancel_order_number"></strong>?
+                </p>
+                <p style="margin: 8px 0 0; font-size: 13px; color: var(--text-muted); line-height: 1.45;">
+                    This will mark the order as <strong>Cancelled</strong> and notify Leajlak to dismiss the delivery captain.
+                </p>
+            </div>
+            
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="btn btn-outline" onclick="closeModal('modal-cancel-order')">No, Keep Order</button>
+                <button type="submit" class="btn btn-danger" id="btn-submit-cancel">
+                    <i class="fa-solid fa-xmark"></i> Yes, Cancel Order
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Re-Ready Confirmation -->
+<div class="modal-overlay" id="modal-reready-order">
+    <div class="modal-dialog modal-sm">
+        <form method="POST" action="orders.php" class="modal-content">
+            <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
+            <input type="hidden" name="action" value="update_status">
+            <input type="hidden" name="order_id" id="modal_reready_order_id" value="">
+            <input type="hidden" name="new_status" value="Ready">
+            <input type="hidden" name="new_payment_status" id="modal_reready_payment_status" value="pending">
+            
+            <div class="modal-header">
+                <h3 class="modal-title" style="color: #b45309; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-rotate-right"></i> Re-Dispatch Order
+                </h3>
+                <button type="button" class="modal-close" onclick="closeModal('modal-reready-order')">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body" style="padding: 20px 24px;">
+                <p style="margin: 0; font-size: 15px; color: var(--text-main);">
+                    Re-dispatch <strong id="modal_reready_order_number"></strong> for delivery?
+                </p>
+                <p style="margin: 8px 0 0; font-size: 13px; color: var(--text-muted); line-height: 1.45;">
+                    This will mark the order as <strong>Ready</strong> and send a fresh driver dispatch request to Leajlak.
+                </p>
+            </div>
+            
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="btn btn-outline" onclick="closeModal('modal-reready-order')">Cancel</button>
+                <button type="submit" class="btn btn-warning" id="btn-submit-reready">
+                    <i class="fa-solid fa-check"></i> Yes, Re-Dispatch
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function closeModal(id) {
+    document.getElementById(id)?.classList.remove('show');
+}
+
+// Close modals on backdrop click
+document.querySelectorAll('.modal-overlay').forEach(modal => {
+    modal.addEventListener('click', function(e) {
+        if (e.target === this) closeModal(this.id);
+    });
+});
+
+// 1. Ready button handler (Immediate 1-click dispatch with spinner)
+document.querySelectorAll('.btn-action-ready').forEach(btn => {
+    btn.addEventListener('click', function() {
+        if (this.disabled) return;
+        this.disabled = true;
+        this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Dispatching...';
+        
+        document.getElementById('quick_order_id').value = this.dataset.id;
+        document.getElementById('quick_new_status').value = 'Ready';
+        document.getElementById('quick_payment_status').value = this.dataset.payment || 'pending';
+        document.getElementById('quick-status-form').submit();
+    });
+});
+
+// 2. Cancel button handler (Opens modal)
+document.querySelectorAll('.btn-action-cancel').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.getElementById('modal_cancel_order_id').value = this.dataset.id;
+        document.getElementById('modal_cancel_order_number').innerText = this.dataset.number;
+        document.getElementById('modal_cancel_payment_status').value = this.dataset.payment || 'pending';
+        document.getElementById('modal-cancel-order').classList.add('show');
+    });
+});
+
+// Cancel submit loading state
+document.getElementById('modal-cancel-order')?.querySelector('form')?.addEventListener('submit', function() {
+    const btn = document.getElementById('btn-submit-cancel');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Cancelling...';
+    }
+});
+
+// 3. Re-Ready button handler (Opens modal)
+document.querySelectorAll('.btn-action-reready').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.getElementById('modal_reready_order_id').value = this.dataset.id;
+        document.getElementById('modal_reready_order_number').innerText = this.dataset.number;
+        document.getElementById('modal_reready_payment_status').value = this.dataset.payment || 'pending';
+        document.getElementById('modal-reready-order').classList.add('show');
+    });
+});
+
+// Re-ready submit loading state
+document.getElementById('modal-reready-order')?.querySelector('form')?.addEventListener('submit', function() {
+    const btn = document.getElementById('btn-submit-reready');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Dispatching...';
+    }
 });
 </script>
 
