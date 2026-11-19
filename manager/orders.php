@@ -285,7 +285,7 @@ function statusBadge($s) {
     </div>
 </div>
 
-<!-- Modern Compact Data Table -->
+<!-- Modern Ultra-Compact Data Table (Zero Side Scrolling) -->
 <style>
 .orders-table-card {
     border-radius: 12px;
@@ -299,7 +299,8 @@ function statusBadge($s) {
     width: 100%;
     border-collapse: separate;
     border-spacing: 0;
-    font-size: 13.5px;
+    font-size: 12.5px;
+    table-layout: auto;
 }
 
 .orders-table th {
@@ -308,14 +309,14 @@ function statusBadge($s) {
     font-size: 11px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.6px;
-    padding: 12px 14px;
+    letter-spacing: 0.5px;
+    padding: 9px 8px;
     border-bottom: 1px solid #e2e8f0;
     white-space: nowrap;
 }
 
 .orders-table td {
-    padding: 11px 14px;
+    padding: 8px 8px;
     border-bottom: 1px solid #f1f5f9;
     color: #1e293b;
     vertical-align: middle;
@@ -333,83 +334,93 @@ function statusBadge($s) {
     border-bottom: none;
 }
 
+/* Compact status badges inside table */
+.orders-table .status {
+    padding: 2px 8px;
+    font-size: 11px;
+    gap: 4px;
+}
+.orders-table .status::before {
+    width: 5px;
+    height: 5px;
+}
+
 /* Column specific widths & alignment */
 .col-order-num {
-    width: 95px;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    font-size: 13px;
-    font-weight: 700;
-    color: #0f172a;
+    width: 75px;
+    white-space: nowrap;
 }
 .order-num-pill {
     display: inline-flex;
     align-items: center;
     background: #f1f5f9;
     color: #0f172a;
-    padding: 2px 7px;
-    border-radius: 6px;
+    padding: 1px 6px;
+    border-radius: 5px;
     border: 1px solid #e2e8f0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    font-weight: 700;
 }
 
 .col-date {
-    width: 135px;
+    width: 105px;
     white-space: nowrap;
-    line-height: 1.35;
+    line-height: 1.25;
 }
 .date-primary {
     font-weight: 600;
     color: #1e293b;
-    font-size: 13px;
+    font-size: 12px;
 }
 .date-time {
-    font-size: 11.5px;
+    font-size: 11px;
     color: #64748b;
 }
 
 .col-customer {
-    min-width: 140px;
-    max-width: 180px;
-    line-height: 1.35;
+    max-width: 135px;
+    line-height: 1.25;
 }
 .customer-name {
     font-weight: 600;
     color: #0f172a;
+    font-size: 12px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 .customer-phone {
-    font-size: 12px;
+    font-size: 11px;
     color: #64748b;
     font-family: ui-monospace, monospace;
 }
 
 .col-items {
-    min-width: 170px;
-    max-width: 240px;
+    max-width: 165px;
 }
 .item-chip {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     background: #f8fafc;
     border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    padding: 2.5px 8px;
-    margin-bottom: 3px;
+    border-radius: 5px;
+    padding: 2px 6px;
+    margin-bottom: 2px;
     max-width: 100%;
 }
 .item-qty {
     font-weight: 800;
-    font-size: 11.5px;
+    font-size: 10.5px;
     color: #4f46e5;
     background: #eef2ff;
-    padding: 1px 5px;
-    border-radius: 4px;
+    padding: 0 4px;
+    border-radius: 3px;
     flex-shrink: 0;
 }
 .item-name {
-    font-size: 12.5px;
+    font-size: 11.5px;
     color: #334155;
     font-weight: 500;
     white-space: nowrap;
@@ -417,61 +428,64 @@ function statusBadge($s) {
     text-overflow: ellipsis;
 }
 .item-more {
-    font-size: 11px;
+    font-size: 10.5px;
     color: #64748b;
     margin-left: 2px;
     font-weight: 500;
 }
 
 .col-total {
-    width: 115px;
+    width: 95px;
     white-space: nowrap;
-    line-height: 1.35;
+    line-height: 1.25;
 }
 .total-amount {
     font-weight: 700;
     color: #0f172a;
-    font-size: 13.5px;
+    font-size: 12.5px;
 }
 .shipping-tag {
-    font-size: 11px;
+    font-size: 10.5px;
     color: #64748b;
     display: flex;
     align-items: center;
-    gap: 3px;
+    gap: 2px;
 }
 
 .col-payment {
-    width: 95px;
+    width: 85px;
     white-space: nowrap;
+    text-align: center;
 }
 
 .col-status {
-    width: 120px;
+    width: 100px;
     white-space: nowrap;
+    text-align: center;
 }
 
 .col-action {
-    width: 175px;
-    text-align: right;
+    width: 150px;
+    text-align: center;
     white-space: nowrap;
 }
 
-/* Polished modern action buttons */
+/* Compact high-precision action buttons */
 .btn-action-ready {
     background: #10b981 !important;
     border: 1px solid #059669 !important;
     color: #ffffff !important;
     font-weight: 600 !important;
-    padding: 5px 12px !important;
-    border-radius: 6px !important;
+    font-size: 11.5px !important;
+    padding: 4px 9px !important;
+    border-radius: 5px !important;
+    gap: 4px !important;
     box-shadow: 0 1px 2px rgba(16, 185, 129, 0.2);
     transition: all 0.15s ease;
 }
 .btn-action-ready:hover {
     background: #059669 !important;
     transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(16, 185, 129, 0.25);
 }
 
 .btn-action-cancel {
@@ -479,13 +493,14 @@ function statusBadge($s) {
     border: 1px solid #fecaca !important;
     color: #dc2626 !important;
     font-weight: 600 !important;
-    padding: 5px 12px !important;
-    border-radius: 6px !important;
+    font-size: 11.5px !important;
+    padding: 4px 8px !important;
+    border-radius: 5px !important;
+    gap: 4px !important;
     transition: all 0.15s ease;
 }
 .btn-action-cancel:hover {
     background: #fee2e2 !important;
-    border-color: #fca5a5 !important;
     color: #b91c1c !important;
 }
 
@@ -494,13 +509,14 @@ function statusBadge($s) {
     border: 1px solid #fde68a !important;
     color: #b45309 !important;
     font-weight: 600 !important;
-    padding: 5px 12px !important;
-    border-radius: 6px !important;
+    font-size: 11.5px !important;
+    padding: 4px 8px !important;
+    border-radius: 5px !important;
+    gap: 4px !important;
     transition: all 0.15s ease;
 }
 .btn-action-reready:hover {
     background: #fef3c7 !important;
-    border-color: #fcd34d !important;
     color: #92400e !important;
 }
 
@@ -509,19 +525,19 @@ function statusBadge($s) {
     border: 1px solid #cbd5e1 !important;
     color: #475569 !important;
     font-weight: 500 !important;
-    padding: 5px 11px !important;
-    border-radius: 6px !important;
+    font-size: 11.5px !important;
+    padding: 4px 8px !important;
+    border-radius: 5px !important;
     transition: all 0.15s ease;
 }
 .btn-action-view:hover {
     background: #f8fafc !important;
-    border-color: #94a3b8 !important;
     color: #0f172a !important;
 }
 </style>
 
 <div class="card orders-table-card">
-    <div class="table-responsive">
+    <div class="table-responsive" style="overflow-x: hidden;">
         <table class="orders-table">
             <thead>
                 <tr>
@@ -530,16 +546,16 @@ function statusBadge($s) {
                     <th class="col-customer">Customer</th>
                     <th class="col-items">Items</th>
                     <th class="col-total">Total</th>
-                    <th class="col-payment">Payment</th>
-                    <th class="col-status">Order Status</th>
-                    <th class="col-action">Action</th>
+                    <th class="col-payment" style="text-align: center;">Payment</th>
+                    <th class="col-status" style="text-align: center;">Order Status</th>
+                    <th class="col-action" style="text-align: center;">Action</th>
                 </tr>
             </thead>
             <tbody>
             <?php if (empty($orders)): ?>
                 <tr>
-                    <td colspan="8" class="empty-state" style="padding: 40px 20px; text-align: center; color: var(--text-muted);">
-                        <i class="fa-solid fa-box-open" style="font-size: 28px; margin-bottom: 8px; display: block; opacity: 0.5;"></i>
+                    <td colspan="8" class="empty-state" style="padding: 30px 15px; text-align: center; color: var(--text-muted);">
+                        <i class="fa-solid fa-box-open" style="font-size: 24px; margin-bottom: 6px; display: block; opacity: 0.5;"></i>
                         No orders found.
                     </td>
                 </tr>
@@ -549,7 +565,7 @@ function statusBadge($s) {
                     <td class="col-order-num">
                         <span class="order-num-pill"><?= e($order['order_number']) ?></span>
                         <?php if ($order['shopify_order_number'] && $order['shopify_order_number'] !== $order['order_number']): ?>
-                            <div style="font-size: 11px; color: var(--text-muted); font-weight: normal; margin-top: 2px;">Shopify: <?= e($order['shopify_order_number']) ?></div>
+                            <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">Shopify: <?= e($order['shopify_order_number']) ?></div>
                         <?php endif; ?>
                     </td>
                     <td class="col-date">
@@ -576,19 +592,19 @@ function statusBadge($s) {
                                 <?php endforeach; ?>
                                 <?php if ($remaining > 0): ?>
                                     <span class="item-more" title="<?= e(implode(', ', array_map(fn($x) => $x['quantity'] . 'x ' . $x['item_name'], array_slice($orderItemList, 2)))) ?>">
-                                        +<?= $remaining ?> more item<?= $remaining > 1 ? 's' : '' ?>
+                                        +<?= $remaining ?> more
                                     </span>
                                 <?php endif; ?>
                             </div>
                         <?php else: ?>
-                            <span class="text-muted" style="font-size: 12px;">—</span>
+                            <span class="text-muted" style="font-size: 11px;">—</span>
                         <?php endif; ?>
                     </td>
                     <td class="col-total">
                         <div class="total-amount"><?= get_setting($db, 'currency_symbol', 'SAR') . ' ' . number_format($order['total_amount'], 2) ?></div>
                         <?php if (isset($order['shipping_fee']) && (float)$order['shipping_fee'] > 0): ?>
                             <div class="shipping-tag" title="Shipping Fee">
-                                <i class="fa-solid fa-truck" style="font-size: 0.68rem;"></i> +<?= number_format($order['shipping_fee'], 2) ?> ship
+                                <i class="fa-solid fa-truck" style="font-size: 0.65rem;"></i> +<?= number_format($order['shipping_fee'], 2) ?> ship
                             </div>
                         <?php endif; ?>
                     </td>
@@ -607,7 +623,7 @@ function statusBadge($s) {
                         <?= statusBadge($order['current_status']) ?>
                     </td>
                     <td class="col-action">
-                        <div style="display:inline-flex; gap:6px; align-items:center; justify-content:flex-end;">
+                        <div style="display:inline-flex; gap:5px; align-items:center; justify-content:center;">
                             <?php if (in_array($order['current_status'], ['New', 'Assigned', 'Accepted', 'Preparing'])): ?>
                                 <button type="button" class="btn btn-sm btn-action-ready"
                                         data-id="<?= $order['id'] ?>"
