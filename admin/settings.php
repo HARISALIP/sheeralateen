@@ -210,9 +210,9 @@ $timezones = [
 ];
 ?>
 
-<div class="page-header">
+<div class="page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
     <div>
-        <h1 class="page-title">System Settings</h1>
+        <h1 class="page-title">System Settings <span style="font-size:12px; font-weight:600; background:#fef3c7; color:#b45309; padding:3px 10px; border-radius:12px; vertical-align:middle; margin-left:8px; border:1px solid #fde68a;">Developer Only</span></h1>
         <p class="page-subtitle">Configure global platform settings, branding, and integrations.</p>
     </div>
 </div>

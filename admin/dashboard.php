@@ -429,21 +429,21 @@ require_once __DIR__ . '/includes/topbar.php';
             </div>
             <div class="card-body">
                 <div class="quick-actions">
+                    <a href="orders.php" class="quick-action-btn" id="qa-orders">
+                        <i class="fa-solid fa-box"></i>
+                        Orders
+                    </a>
                     <a href="branches.php" class="quick-action-btn" id="qa-branches">
                         <i class="fa-solid fa-store"></i>
                         Branches
                     </a>
                     <a href="managers.php" class="quick-action-btn" id="qa-managers">
-                        <i class="fa-solid fa-user-plus"></i>
+                        <i class="fa-solid fa-users"></i>
                         Managers
                     </a>
                     <a href="reports.php" class="quick-action-btn" id="qa-reports">
                         <i class="fa-solid fa-chart-line"></i>
                         Reports
-                    </a>
-                    <a href="settings.php" class="quick-action-btn" id="qa-settings">
-                        <i class="fa-solid fa-gear"></i>
-                        Settings
                     </a>
                 </div>
             </div>
