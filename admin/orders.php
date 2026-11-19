@@ -28,11 +28,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     
     if ($orderId > 0 && in_array($newStatus, $validStatuses) && in_array($newPaymentStatus, $validPaymentStatuses)) {
         // Fetch order to verify and log
-        $stmt = $db->prepare("SELECT o.order_number, o.shopify_order_id, o.current_status, o.payment_status, o.customer_phone, o.delivery_address, o.total_amount, b.leajlak_shop_id, o.customer_name, o.customer_email, o.leajlak_order_id FROM orders o LEFT JOIN branches b ON o.assigned_branch_id = b.id WHERE o.id = :id");
+        $stmt = $db->prepare("SELECT o.order_number, o.shopify_order_id, o.current_status, o.payment_status, o.customer_phone, o.delivery_address, o.total_amount, b.leajlak_shop_id, o.customer_name, o.customer_email, o.leajlak_order_id, o.leajlak_status FROM orders o LEFT JOIN branches b ON o.assigned_branch_id = b.id WHERE o.id = :id");
         $stmt->execute([':id' => $orderId]);
         $order = $stmt->fetch();
         
-        if ($order && ($order['current_status'] !== $newStatus || $order['payment_status'] !== $newPaymentStatus)) {
+        if ($order && (
+            $order['current_status'] !== $newStatus || 
+            $order['payment_status'] !== $newPaymentStatus || 
+            ($newStatus === 'Ready' && in_array(strtolower($order['leajlak_status'] ?? ''), ['canceled', 'cancelled']))
+        )) {
             // 1. Update local database
             $update = $db->prepare("UPDATE orders SET current_status = :status, payment_status = :pstatus, updated_at = NOW() WHERE id = :id");
             $update->execute([':status' => $newStatus, ':pstatus' => $newPaymentStatus, ':id' => $orderId]);
@@ -48,12 +52,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 ]);
             }
             
-                        // 2.5 Trigger Leajlak Delivery if moved to 'Ready' or Cancel if moved to 'Cancelled'
+            // 2.5 Trigger Leajlak Delivery if moved to 'Ready' or Cancel if moved to 'Cancelled'
             $leajlakSuccess = true;
             $leajlakError = '';
             $leajlakCancelWarning = '';
 
-            if ($order['current_status'] !== 'Ready' && $newStatus === 'Ready') {
+            if (($order['current_status'] !== 'Ready' || in_array(strtolower($order['leajlak_status'] ?? ''), ['canceled', 'cancelled'])) && $newStatus === 'Ready') {
                 $leajlak = new LeajlakService($db);
                 $leajlakResult = $leajlak->createOrderFromRow($order);
                 if (!$leajlakResult['success']) {
@@ -202,15 +206,19 @@ require_once __DIR__ . '/includes/topbar.php';
 
 // Helper for status badge
 function statusBadge($s) {
+    $slug = 'status-' . strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', trim($s)));
     $class = match($s) {
-        'New' => 'pending',
-        'Assigned', 'Accepted' => 'processing',
-        'Preparing', 'Ready', 'Out For Delivery' => 'info',
-        'Delivered' => 'completed',
-        'Cancelled', 'Returned' => 'inactive',
-        default => 'pending'
+        'New' => 'status-new',
+        'Assigned', 'Accepted' => 'status-assigned',
+        'Preparing' => 'status-preparing',
+        'Ready' => 'status-ready',
+        'Out For Delivery' => 'status-out-for-delivery',
+        'Delivered' => 'status-delivered',
+        'Cancelled' => 'status-cancelled',
+        'Returned' => 'status-returned',
+        default => 'status-pending'
     };
-    return "<span class=\"status $class\">" . e($s) . "</span>";
+    return "<span class=\"status $class $slug\">" . e($s) . "</span>";
 }
 ?>
 
@@ -269,84 +277,414 @@ function statusBadge($s) {
     </div>
 </div>
 
+<style>
+.orders-table-card {
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
+    background: #fff;
+    overflow: hidden;
+}
+
+.orders-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 12.5px;
+    table-layout: auto;
+}
+
+.orders-table th {
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 9px 8px;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
+
+.orders-table td {
+    padding: 8px 8px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #1e293b;
+    vertical-align: middle;
+}
+
+.orders-table tbody tr {
+    transition: background 0.15s ease;
+}
+
+.orders-table tbody tr:hover td {
+    background: #f8fafc;
+}
+
+.orders-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* Professional typographic status badges (No AI dots, crisp micro-radius) */
+.orders-table .status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2.5px 7px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.25;
+    border-radius: 5px;
+    letter-spacing: 0.15px;
+    white-space: nowrap;
+    border: 1px solid transparent;
+}
+.orders-table .status::before {
+    display: none !important; /* Remove AI status dots */
+}
+
+/* Payment & Order Status Colors - Quiet, disciplined palette */
+.orders-table .status-paid,
+.orders-table .status-delivered,
+.orders-table .status.completed {
+    background: #f0fdf4 !important;
+    color: #15803d !important;
+    border-color: #bbf7d0 !important;
+}
+
+.orders-table .status-pending,
+.orders-table .status.pending {
+    background: #fffbeb !important;
+    color: #b45309 !important;
+    border-color: #fde68a !important;
+}
+
+.orders-table .status-cancelled,
+.orders-table .status-failed,
+.orders-table .status.cancelled,
+.orders-table .status.danger {
+    background: #fef2f2 !important;
+    color: #991b1b !important;
+    border-color: #fecaca !important;
+}
+
+.orders-table .status-refunded,
+.orders-table .status-returned,
+.orders-table .status.inactive {
+    background: #f8fafc !important;
+    color: #475569 !important;
+    border-color: #cbd5e1 !important;
+}
+
+.orders-table .status-ready,
+.orders-table .status.info {
+    background: #f0f9ff !important;
+    color: #0369a1 !important;
+    border-color: #bae6fd !important;
+}
+
+.orders-table .status-out-for-delivery {
+    background: #faf5ff !important;
+    color: #7e22ce !important;
+    border-color: #e9d5ff !important;
+}
+
+.orders-table .status-new {
+    background: #eff6ff !important;
+    color: #1d4ed8 !important;
+    border-color: #bfdbfe !important;
+}
+
+.orders-table .status-preparing,
+.orders-table .status-assigned,
+.orders-table .status-accepted,
+.orders-table .status.processing {
+    background: #eef2ff !important;
+    color: #4338ca !important;
+    border-color: #c7d2fe !important;
+}
+
+/* Column specific widths & alignment */
+.col-order-num {
+    width: 75px;
+    white-space: nowrap;
+}
+.order-num-pill {
+    display: inline-flex;
+    align-items: center;
+    background: #f1f5f9;
+    color: #0f172a;
+    padding: 1px 6px;
+    border-radius: 5px;
+    border: 1px solid #e2e8f0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.col-date {
+    width: 105px;
+    white-space: nowrap;
+    line-height: 1.25;
+}
+.date-primary {
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 12px;
+}
+.date-time {
+    font-size: 11px;
+    color: #64748b;
+}
+
+.col-customer {
+    max-width: 135px;
+    line-height: 1.25;
+}
+.customer-name {
+    font-weight: 600;
+    color: #0f172a;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.customer-phone {
+    font-size: 11px;
+    color: #64748b;
+    font-family: ui-monospace, monospace;
+}
+
+/* Branch column replacing Items in admin panel */
+.col-branch {
+    max-width: 130px;
+    line-height: 1.25;
+}
+.branch-pill {
+    display: inline-flex;
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 5px;
+    padding: 2.5px 7px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #334155;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+}
+.branch-pill.unassigned {
+    color: #94a3b8;
+    background: #fdfdfe;
+    border-style: dashed;
+}
+
+.col-total {
+    width: 95px;
+    white-space: nowrap;
+    line-height: 1.25;
+}
+.total-amount {
+    font-weight: 700;
+    color: #0f172a;
+    font-size: 12.5px;
+}
+.shipping-tag {
+    font-size: 10.5px;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.col-payment {
+    width: 85px;
+    white-space: nowrap;
+    text-align: center;
+}
+
+.col-status {
+    width: 100px;
+    white-space: nowrap;
+    text-align: center;
+}
+
+.col-action {
+    width: 150px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+/* Compact high-precision action buttons */
+.btn-action-ready {
+    background: #10b981 !important;
+    border: 1px solid #059669 !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    font-size: 11.5px !important;
+    padding: 4px 9px !important;
+    border-radius: 5px !important;
+    gap: 4px !important;
+    box-shadow: 0 1px 2px rgba(16, 185, 129, 0.2);
+    transition: all 0.15s ease;
+}
+.btn-action-ready:hover {
+    background: #059669 !important;
+    transform: translateY(-1px);
+}
+
+.btn-action-cancel {
+    background: #fef2f2 !important;
+    border: 1px solid #fecaca !important;
+    color: #dc2626 !important;
+    font-weight: 600 !important;
+    font-size: 11.5px !important;
+    padding: 4px 8px !important;
+    border-radius: 5px !important;
+    gap: 4px !important;
+    transition: all 0.15s ease;
+}
+.btn-action-cancel:hover {
+    background: #fee2e2 !important;
+    color: #b91c1c !important;
+}
+
+.btn-action-reready {
+    background: #fffbeb !important;
+    border: 1px solid #fde68a !important;
+    color: #b45309 !important;
+    font-weight: 600 !important;
+    font-size: 11.5px !important;
+    padding: 4px 8px !important;
+    border-radius: 5px !important;
+    gap: 4px !important;
+    transition: all 0.15s ease;
+}
+.btn-action-reready:hover {
+    background: #fef3c7 !important;
+    color: #92400e !important;
+}
+
+.btn-action-view {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    color: #475569 !important;
+    font-weight: 500 !important;
+    font-size: 11.5px !important;
+    padding: 4px 8px !important;
+    border-radius: 5px !important;
+    transition: all 0.15s ease;
+}
+.btn-action-view:hover {
+    background: #f8fafc !important;
+    color: #0f172a !important;
+}
+</style>
+
 <!-- Data Table -->
-<div class="card">
-    <div class="table-responsive">
-        <table class="table">
+<div class="card orders-table-card">
+    <div class="table-responsive" style="overflow-x: hidden;">
+        <table class="orders-table">
             <thead>
                 <tr>
-                    <th>Order #</th>
-                    <th>Date</th>
-                    <th>Customer</th>
-                    <th>Branch</th>
-                    <th>Total</th>
-                    <th>Payment</th>
-                    <th>Order Status</th>
-                    <th class="text-right">Action</th>
+                    <th class="col-order-num">Order #</th>
+                    <th class="col-date">Date</th>
+                    <th class="col-customer">Customer</th>
+                    <th class="col-branch">Branch</th>
+                    <th class="col-total">Total</th>
+                    <th class="col-payment" style="text-align: center;">Payment</th>
+                    <th class="col-status" style="text-align: center;">Order Status</th>
+                    <th class="col-action" style="text-align: center;">Action</th>
                 </tr>
             </thead>
             <tbody>
             <?php if (empty($orders)): ?>
                 <tr>
-                    <td colspan="8" class="empty-state">
-                        <i class="fa-solid fa-box-open"></i>
+                    <td colspan="8" class="empty-state" style="padding: 30px 15px; text-align: center; color: var(--text-muted);">
+                        <i class="fa-solid fa-box-open" style="font-size: 24px; margin-bottom: 6px; display: block; opacity: 0.5;"></i>
                         No orders found.
                     </td>
                 </tr>
             <?php else: ?>
                 <?php foreach ($orders as $order): ?>
                 <tr>
-                    <td>
-                        <strong><?= e($order['order_number']) ?></strong>
+                    <td class="col-order-num">
+                        <span class="order-num-pill"><?= e($order['order_number']) ?></span>
                         <?php if ($order['shopify_order_number'] && $order['shopify_order_number'] !== $order['order_number']): ?>
-                            <br><small class="text-muted">Shopify: <?= e($order['shopify_order_number']) ?></small>
+                            <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">Shopify: <?= e($order['shopify_order_number']) ?></div>
                         <?php endif; ?>
                     </td>
-                    <td>
-                        <?= date('M d, Y', strtotime($order['created_at'])) ?><br>
-                        <small class="text-muted"><?= date('h:i A', strtotime($order['created_at'])) ?></small>
+                    <td class="col-date">
+                        <div class="date-primary"><?= date('M d, Y', strtotime($order['created_at'])) ?></div>
+                        <div class="date-time"><?= date('h:i A', strtotime($order['created_at'])) ?></div>
                     </td>
-                    <td>
-                        <?= e($order['customer_name']) ?><br>
-                        <small class="text-muted"><?= e($order['customer_phone']) ?></small>
+                    <td class="col-customer">
+                        <div class="customer-name" title="<?= e($order['customer_name']) ?>"><?= e($order['customer_name']) ?></div>
+                        <div class="customer-phone"><?= htmlspecialchars($order['customer_phone'] ?? '') ?></div>
                     </td>
-                    <td>
-                        <?= $order['branch_name'] ? e($order['branch_name']) : '<span class="text-muted">Unassigned</span>' ?>
+                    <td class="col-branch">
+                        <?php if ($order['branch_name']): ?>
+                            <span class="branch-pill" title="<?= e($order['branch_name']) ?>"><?= e($order['branch_name']) ?></span>
+                        <?php else: ?>
+                            <span class="branch-pill unassigned">Unassigned</span>
+                        <?php endif; ?>
                     </td>
-                    <td>
-                        <strong><?= get_setting($db, 'currency_symbol', 'SAR') . ' ' . number_format($order['total_amount'], 2) ?></strong>
+                    <td class="col-total">
+                        <div class="total-amount"><?= get_setting($db, 'currency_symbol', 'SAR') . ' ' . number_format($order['total_amount'], 2) ?></div>
                         <?php if (isset($order['shipping_fee']) && (float)$order['shipping_fee'] > 0): ?>
-                            <br><small class="text-muted" title="Shipping Fee"><i class="fa-solid fa-truck" style="font-size: 0.72rem;"></i> +<?= number_format($order['shipping_fee'], 2) ?> ship</small>
+                            <div class="shipping-tag" title="Shipping Fee">
+                                <i class="fa-solid fa-truck" style="font-size: 0.65rem;"></i> +<?= number_format($order['shipping_fee'], 2) ?> ship
+                            </div>
                         <?php endif; ?>
                     </td>
-                    <td>
-                        <form method="POST" action="orders.php" style="display:inline; margin:0;" class="inline-update-form">
-                            <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
-                            <input type="hidden" name="action" value="update_status">
-                            <input type="hidden" name="order_id" value="<?= $order['id'] ?>">
-                            <input type="hidden" name="new_status" value="<?= e($order['current_status']) ?>">
-                            <select name="new_payment_status" class="form-control" onchange="this.form.submit()" style="min-width: 110px; padding: 4px 8px; font-size: 13px; height: auto;">
-                                <?php foreach(array_unique(array_merge(["pending", "paid"], [$order["payment_status"]])) as $ps): ?>
-                                    <option value="<?= $ps ?>" <?= $order["payment_status"] === $ps ? "selected" : "" ?>><?= ucfirst(str_replace("_", " ", $ps)) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </form>
+                    <td class="col-payment">
+                        <?php
+                        $pStatus = $order['payment_status'] ?? 'pending';
+                        $pSlug = 'status-pay-' . strtolower(str_replace([' ', '_'], '-', trim($pStatus)));
+                        $pClass = match($pStatus) {
+                            'paid' => 'status-paid',
+                            'refunded', 'partially_refunded' => 'status-refunded',
+                            'failed' => 'status-failed',
+                            default => 'status-pending'
+                        };
+                        ?>
+                        <span class="status <?= $pClass ?> <?= $pSlug ?>"><?= ucfirst(str_replace('_', ' ', $pStatus)) ?></span>
                     </td>
-                    <td>
-                        <form method="POST" action="orders.php" style="display:inline; margin:0;" class="inline-update-form">
-                            <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
-                            <input type="hidden" name="action" value="update_status">
-                            <input type="hidden" name="order_id" value="<?= $order['id'] ?>">
-                            <input type="hidden" name="new_payment_status" value="<?= e($order['payment_status']) ?>">
-                            <select name="new_status" class="form-control" onchange="this.form.submit()" style="min-width: 140px; padding: 4px 8px; font-size: 13px; height: auto;">
-                                <?php foreach(array_unique(array_merge(['New','Ready','Out For Delivery','Cancelled'], [$order['current_status']])) as $st): ?>
-                                    <option value="<?= $st ?>" <?= $order['current_status'] === $st ? 'selected' : '' ?>><?= $st ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </form>
+                    <td class="col-status">
+                        <?= statusBadge($order['current_status']) ?>
                     </td>
-                    <td class="text-right">
-                        <a href="order_details.php?id=<?= $order['id'] ?>" class="btn btn-sm btn-outline">View</a>
+                    <td class="col-action">
+                        <div style="display:inline-flex; gap:5px; align-items:center; justify-content:center;">
+                            <?php if (in_array($order['current_status'], ['New', 'Assigned', 'Accepted', 'Preparing'])): ?>
+                                <button type="button" class="btn btn-sm btn-action-ready"
+                                        data-id="<?= $order['id'] ?>"
+                                        data-number="<?= e($order['order_number']) ?>"
+                                        data-payment="<?= e($order['payment_status']) ?>"
+                                        title="Mark order as Ready and dispatch delivery captain in Leajlak">
+                                    <i class="fa-solid fa-check"></i> Ready
+                                </button>
+                            <?php elseif ($order['current_status'] === 'Ready'): ?>
+                                <button type="button" class="btn btn-sm btn-action-cancel"
+                                        data-id="<?= $order['id'] ?>"
+                                        data-number="<?= e($order['order_number']) ?>"
+                                        data-payment="<?= e($order['payment_status']) ?>"
+                                        title="Cancel order and recall Leajlak delivery driver">
+                                    <i class="fa-solid fa-xmark"></i> Cancel
+                                </button>
+                            <?php elseif ($order['current_status'] === 'Cancelled'): ?>
+                                <button type="button" class="btn btn-sm btn-action-reready"
+                                        data-id="<?= $order['id'] ?>"
+                                        data-number="<?= e($order['order_number']) ?>"
+                                        data-payment="<?= e($order['payment_status']) ?>"
+                                        title="Re-dispatch order to Leajlak and mark Ready">
+                                    <i class="fa-solid fa-rotate-right"></i> Re-Dispatch
+                                </button>
+                            <?php endif; ?>
+
+                            <a href="order_details.php?id=<?= $order['id'] ?>" class="btn btn-sm btn-action-view">View</a>
+                        </div>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -395,17 +733,153 @@ function statusBadge($s) {
     <?php endif; ?>
 </div>
 
+<!-- Hidden form for Quick Direct Dispatch (Ready) -->
+<form id="quick-status-form" method="POST" action="orders.php" style="display:none;">
+    <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
+    <input type="hidden" name="action" value="update_status">
+    <input type="hidden" name="order_id" id="quick_order_id" value="">
+    <input type="hidden" name="new_status" id="quick_new_status" value="">
+    <input type="hidden" name="new_payment_status" id="quick_payment_status" value="pending">
+</form>
+
+<!-- Modal: Cancel Order Confirmation -->
+<div class="modal-overlay" id="modal-cancel-order">
+    <div class="modal-dialog modal-sm">
+        <form method="POST" action="orders.php" class="modal-content">
+            <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
+            <input type="hidden" name="action" value="update_status">
+            <input type="hidden" name="order_id" id="modal_cancel_order_id" value="">
+            <input type="hidden" name="new_status" value="Cancelled">
+            <input type="hidden" name="new_payment_status" id="modal_cancel_payment_status" value="pending">
+            
+            <div class="modal-header">
+                <h3 class="modal-title" style="color: var(--danger); display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Cancel Order
+                </h3>
+                <button type="button" class="modal-close" onclick="closeModal('modal-cancel-order')">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body" style="padding: 20px 24px;">
+                <p style="margin: 0; font-size: 15px; color: var(--text-main);">
+                    Are you sure you want to cancel <strong id="modal_cancel_order_number"></strong>?
+                </p>
+                <p style="margin: 8px 0 0; font-size: 13px; color: var(--text-muted); line-height: 1.45;">
+                    This will mark the order as <strong>Cancelled</strong> and notify Leajlak to dismiss the delivery captain.
+                </p>
+            </div>
+            
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="btn btn-outline" onclick="closeModal('modal-cancel-order')">No, Keep Order</button>
+                <button type="submit" class="btn btn-danger" id="btn-submit-cancel">
+                    <i class="fa-solid fa-xmark"></i> Yes, Cancel Order
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Re-Ready Confirmation -->
+<div class="modal-overlay" id="modal-reready-order">
+    <div class="modal-dialog modal-sm">
+        <form method="POST" action="orders.php" class="modal-content">
+            <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
+            <input type="hidden" name="action" value="update_status">
+            <input type="hidden" name="order_id" id="modal_reready_order_id" value="">
+            <input type="hidden" name="new_status" value="Ready">
+            <input type="hidden" name="new_payment_status" id="modal_reready_payment_status" value="pending">
+            
+            <div class="modal-header">
+                <h3 class="modal-title" style="color: #b45309; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-rotate-right"></i> Re-Dispatch Order
+                </h3>
+                <button type="button" class="modal-close" onclick="closeModal('modal-reready-order')">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body" style="padding: 20px 24px;">
+                <p style="margin: 0; font-size: 15px; color: var(--text-main);">
+                    Re-dispatch <strong id="modal_reready_order_number"></strong> for delivery?
+                </p>
+                <p style="margin: 8px 0 0; font-size: 13px; color: var(--text-muted); line-height: 1.45;">
+                    This will mark the order as <strong>Ready</strong> and send a fresh driver dispatch request to Leajlak.
+                </p>
+            </div>
+            
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="btn btn-outline" onclick="closeModal('modal-reready-order')">Cancel</button>
+                <button type="submit" class="btn btn-warning" id="btn-submit-reready">
+                    <i class="fa-solid fa-check"></i> Yes, Re-Dispatch
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
-// Visual feedback for inline forms
-document.querySelectorAll('.inline-update-form').forEach(form => {
-    form.addEventListener('submit', function() {
-        const selects = this.querySelectorAll('select');
-        selects.forEach(s => {
-            s.style.opacity = '0.6';
-            s.style.pointerEvents = 'none';
-        });
-        document.body.style.cursor = 'wait';
+function closeModal(id) {
+    document.getElementById(id)?.classList.remove('show');
+}
+
+// Close modals on backdrop click
+document.querySelectorAll('.modal-overlay').forEach(modal => {
+    modal.addEventListener('click', function(e) {
+        if (e.target === this) closeModal(this.id);
     });
+});
+
+// 1. Ready button handler (Immediate 1-click dispatch with spinner)
+document.querySelectorAll('.btn-action-ready').forEach(btn => {
+    btn.addEventListener('click', function() {
+        if (this.disabled) return;
+        this.disabled = true;
+        this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Dispatching...';
+        
+        document.getElementById('quick_order_id').value = this.dataset.id;
+        document.getElementById('quick_new_status').value = 'Ready';
+        document.getElementById('quick_payment_status').value = this.dataset.payment || 'pending';
+        document.getElementById('quick-status-form').submit();
+    });
+});
+
+// 2. Cancel button handler (Opens modal)
+document.querySelectorAll('.btn-action-cancel').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.getElementById('modal_cancel_order_id').value = this.dataset.id;
+        document.getElementById('modal_cancel_order_number').innerText = this.dataset.number;
+        document.getElementById('modal_cancel_payment_status').value = this.dataset.payment || 'pending';
+        document.getElementById('modal-cancel-order').classList.add('show');
+    });
+});
+
+// Cancel submit loading state
+document.getElementById('modal-cancel-order')?.querySelector('form')?.addEventListener('submit', function() {
+    const btn = document.getElementById('btn-submit-cancel');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Cancelling...';
+    }
+});
+
+// 3. Re-Ready button handler (Opens modal)
+document.querySelectorAll('.btn-action-reready').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.getElementById('modal_reready_order_id').value = this.dataset.id;
+        document.getElementById('modal_reready_order_number').innerText = this.dataset.number;
+        document.getElementById('modal_reready_payment_status').value = this.dataset.payment || 'pending';
+        document.getElementById('modal-reready-order').classList.add('show');
+    });
+});
+
+// Re-ready submit loading state
+document.getElementById('modal-reready-order')?.querySelector('form')?.addEventListener('submit', function() {
+    const btn = document.getElementById('btn-submit-reready');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Dispatching...';
+    }
 });
 
 // Manual Sync Button
