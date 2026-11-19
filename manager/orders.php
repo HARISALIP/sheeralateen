@@ -223,15 +223,19 @@ require_once __DIR__ . '/includes/topbar.php';
 
 // Helper for status badge
 function statusBadge($s) {
+    $slug = 'status-' . strtolower(preg_replace('/[^a-zA-Z0-9]+/', '-', trim($s)));
     $class = match($s) {
-        'New' => 'pending',
-        'Assigned', 'Accepted' => 'processing',
-        'Preparing', 'Ready', 'Out For Delivery' => 'info',
-        'Delivered' => 'completed',
-        'Cancelled', 'Returned' => 'inactive',
-        default => 'pending'
+        'New' => 'status-new',
+        'Assigned', 'Accepted' => 'status-assigned',
+        'Preparing' => 'status-preparing',
+        'Ready' => 'status-ready',
+        'Out For Delivery' => 'status-out-for-delivery',
+        'Delivered' => 'status-delivered',
+        'Cancelled' => 'status-cancelled',
+        'Returned' => 'status-returned',
+        default => 'status-pending'
     };
-    return "<span class=\"status $class\">" . e($s) . "</span>";
+    return "<span class=\"status $class $slug\">" . e($s) . "</span>";
 }
 ?>
 
@@ -334,15 +338,83 @@ function statusBadge($s) {
     border-bottom: none;
 }
 
-/* Compact status badges inside table */
+/* Professional typographic status badges (No AI dots, crisp micro-radius) */
 .orders-table .status {
-    padding: 2px 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2.5px 7px;
     font-size: 11px;
-    gap: 4px;
+    font-weight: 600;
+    line-height: 1.25;
+    border-radius: 5px;
+    letter-spacing: 0.15px;
+    white-space: nowrap;
+    border: 1px solid transparent;
 }
 .orders-table .status::before {
-    width: 5px;
-    height: 5px;
+    display: none !important; /* Remove AI status dots */
+}
+
+/* Payment & Order Status Colors - Quiet, disciplined palette */
+.orders-table .status-paid,
+.orders-table .status-delivered,
+.orders-table .status.completed {
+    background: #f0fdf4 !important;
+    color: #15803d !important;
+    border-color: #bbf7d0 !important;
+}
+
+.orders-table .status-pending,
+.orders-table .status.pending {
+    background: #fffbeb !important;
+    color: #b45309 !important;
+    border-color: #fde68a !important;
+}
+
+.orders-table .status-cancelled,
+.orders-table .status-failed,
+.orders-table .status.cancelled,
+.orders-table .status.danger {
+    background: #fef2f2 !important;
+    color: #991b1b !important;
+    border-color: #fecaca !important;
+}
+
+.orders-table .status-refunded,
+.orders-table .status-returned,
+.orders-table .status.inactive {
+    background: #f8fafc !important;
+    color: #475569 !important;
+    border-color: #cbd5e1 !important;
+}
+
+.orders-table .status-ready,
+.orders-table .status.info {
+    background: #f0f9ff !important;
+    color: #0369a1 !important;
+    border-color: #bae6fd !important;
+}
+
+.orders-table .status-out-for-delivery {
+    background: #faf5ff !important;
+    color: #7e22ce !important;
+    border-color: #e9d5ff !important;
+}
+
+.orders-table .status-new {
+    background: #eff6ff !important;
+    color: #1d4ed8 !important;
+    border-color: #bfdbfe !important;
+}
+
+.orders-table .status-preparing,
+.orders-table .status-assigned,
+.orders-table .status-accepted,
+.orders-table .status.processing {
+    background: #eef2ff !important;
+    color: #4338ca !important;
+    border-color: #c7d2fe !important;
 }
 
 /* Column specific widths & alignment */
@@ -611,13 +683,15 @@ function statusBadge($s) {
                     <td class="col-payment">
                         <?php
                         $pStatus = $order['payment_status'] ?? 'pending';
-                        $pBadgeClass = match($pStatus) {
-                            'paid' => 'completed',
-                            'refunded', 'failed' => 'inactive',
-                            default => 'pending'
+                        $pSlug = 'status-pay-' . strtolower(str_replace([' ', '_'], '-', trim($pStatus)));
+                        $pClass = match($pStatus) {
+                            'paid' => 'status-paid',
+                            'refunded', 'partially_refunded' => 'status-refunded',
+                            'failed' => 'status-failed',
+                            default => 'status-pending'
                         };
                         ?>
-                        <span class="status <?= $pBadgeClass ?>"><?= ucfirst(str_replace('_', ' ', $pStatus)) ?></span>
+                        <span class="status <?= $pClass ?> <?= $pSlug ?>"><?= ucfirst(str_replace('_', ' ', $pStatus)) ?></span>
                     </td>
                     <td class="col-status">
                         <?= statusBadge($order['current_status']) ?>
