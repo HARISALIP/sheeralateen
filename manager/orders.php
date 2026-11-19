@@ -444,83 +444,76 @@ function statusBadge($s) {
     border-bottom: none;
 }
 
-/* Professional typographic status badges (No AI dots, crisp micro-radius) */
+/* Status pill badges matching reference design (Pill shape, exact soft pastels, no dots) */
 .orders-table .status {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 2.5px 7px;
-    font-size: 11px;
+    padding: 3.5px 13px;
+    font-size: 11.5px;
     font-weight: 600;
     line-height: 1.25;
-    border-radius: 5px;
-    letter-spacing: 0.15px;
+    border-radius: 9999px !important; /* Full rounded pill */
+    letter-spacing: 0.1px;
     white-space: nowrap;
-    border: 1px solid transparent;
+    border: none !important;
+    box-shadow: none !important;
 }
 .orders-table .status::before {
     display: none !important; /* Remove AI status dots */
 }
 
-/* Payment & Order Status Colors - Quiet, disciplined palette */
+/* Payment & Order Status Colors matching image */
 .orders-table .status-paid,
 .orders-table .status-delivered,
 .orders-table .status.completed {
-    background: #f0fdf4 !important;
-    color: #15803d !important;
-    border-color: #bbf7d0 !important;
+    background: #dcfce7 !important;
+    color: #166534 !important;
 }
 
 .orders-table .status-pending,
 .orders-table .status.pending {
-    background: #fffbeb !important;
-    color: #b45309 !important;
-    border-color: #fde68a !important;
+    background: #fef08a !important;
+    color: #854d0e !important;
 }
 
 .orders-table .status-cancelled,
 .orders-table .status-failed,
 .orders-table .status.cancelled,
 .orders-table .status.danger {
-    background: #fef2f2 !important;
+    background: #fee2e2 !important;
     color: #991b1b !important;
-    border-color: #fecaca !important;
 }
 
 .orders-table .status-refunded,
 .orders-table .status-returned,
 .orders-table .status.inactive {
-    background: #f8fafc !important;
+    background: #f1f5f9 !important;
     color: #475569 !important;
-    border-color: #cbd5e1 !important;
 }
 
 .orders-table .status-ready,
 .orders-table .status.info {
-    background: #f0f9ff !important;
+    background: #e0f2fe !important;
     color: #0369a1 !important;
-    border-color: #bae6fd !important;
 }
 
 .orders-table .status-out-for-delivery {
-    background: #faf5ff !important;
-    color: #7e22ce !important;
-    border-color: #e9d5ff !important;
+    background: #f3e8ff !important;
+    color: #6b21a8 !important;
 }
 
 .orders-table .status-new {
-    background: #eff6ff !important;
-    color: #1d4ed8 !important;
-    border-color: #bfdbfe !important;
+    background: #e0e7ff !important;
+    color: #3730a3 !important;
 }
 
 .orders-table .status-preparing,
 .orders-table .status-assigned,
 .orders-table .status-accepted,
 .orders-table .status.processing {
-    background: #eef2ff !important;
-    color: #4338ca !important;
-    border-color: #c7d2fe !important;
+    background: #ede9fe !important;
+    color: #5b21b6 !important;
 }
 
 /* Column specific widths & alignment */
@@ -631,15 +624,15 @@ function statusBadge($s) {
 }
 
 .col-payment {
-    width: 85px;
+    width: 105px;
     white-space: nowrap;
-    text-align: center;
+    text-align: center !important;
 }
 
 .col-status {
-    width: 100px;
+    width: 115px;
     white-space: nowrap;
-    text-align: center;
+    text-align: center !important;
 }
 
 .col-action {
