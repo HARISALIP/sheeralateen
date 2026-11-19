@@ -410,27 +410,28 @@ function statusBadge($s) {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    padding: 10px 10px;
+    padding: 11px 10px;
     border-bottom: 1px solid #E8ECF2;
+    vertical-align: middle !important;
     white-space: nowrap;
 }
 
 .orders-table tbody tr {
-    height: 56px;
+    height: 62px;
     transition: background 0.15s ease;
 }
 
 .orders-table td {
-    padding: 8px 10px;
-    height: 56px;
-    border-bottom: 1px solid #E8ECF2;
+    padding: 10px 10px;
+    height: 62px;
+    border-bottom: 1px solid #EEF2F6;
     color: #172033;
-    vertical-align: middle;
+    vertical-align: middle !important;
     box-sizing: border-box;
 }
 
 .orders-table tbody tr:hover td {
-    background: #F8FAFC;
+    background: #FAFBFC;
 }
 
 .orders-table tr:last-child td {
@@ -518,13 +519,14 @@ function statusBadge($s) {
     display: inline-flex;
     align-items: center;
     background: #F8FAFC;
-    color: #172033;
-    padding: 2px 7px;
+    color: #0F172A;
+    padding: 2.5px 8px;
     border-radius: 6px;
-    border: 1px solid #E8ECF2;
+    border: 1px solid #E2E8F0;
     font-family: 'Inter', ui-monospace, monospace;
-    font-size: 12px;
+    font-size: 12.5px;
     font-weight: 700;
+    letter-spacing: -0.2px;
 }
 
 .col-date {
@@ -550,17 +552,20 @@ function statusBadge($s) {
 }
 .customer-name {
     font-weight: 600;
-    color: #172033;
-    font-size: 12px;
+    color: #0F172A;
+    font-size: 13px;
+    line-height: 1.35;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 .customer-phone {
     font-size: 11px;
-    color: #778399;
+    color: #94A3B8;
     font-family: 'Inter', ui-monospace, monospace;
-    margin-top: 1px;
+    font-weight: 400;
+    margin-top: 2px;
+    letter-spacing: 0.1px;
 }
 
 /* Branch column replacing Items in admin panel */
@@ -631,17 +636,17 @@ function statusBadge($s) {
 }
 
 .col-action {
-    width: 205px;
+    width: 215px;
     text-align: right;
     white-space: nowrap;
-    padding-right: 14px !important;
+    padding-right: 16px !important;
 }
 
 .action-cell-wrap {
     display: inline-flex;
     align-items: center;
     justify-content: flex-end;
-    gap: 7px;
+    gap: 6px;
     min-width: 190px;
 }
 
@@ -652,75 +657,83 @@ function statusBadge($s) {
     flex-shrink: 0;
 }
 
-/* Rounded Pill Action Buttons Matching Mockup */
-.btn-action-ready {
+/* Compact outlined action buttons (Re-Dispatch, Ready, Cancel) */
+.btn-action-reready {
     background: #ffffff !important;
-    border: 1px solid #86efac !important;
-    color: #16a34a !important;
+    border: 1px solid #3b82f6 !important;
+    color: #2563eb !important;
     font-weight: 500 !important;
     font-size: 11.5px !important;
-    padding: 3.5px 11px !important;
-    border-radius: 20px !important;
+    height: 29px !important;
+    padding: 0 10px !important;
+    border-radius: 6px !important;
     display: inline-flex !important;
     align-items: center !important;
     gap: 5px !important;
     white-space: nowrap !important;
     transition: all 0.15s ease !important;
+    cursor: pointer !important;
+}
+.btn-action-reready:hover {
+    background: #eff6ff !important;
+    border-color: #1d4ed8 !important;
+    color: #1d4ed8 !important;
+}
+
+.btn-action-ready {
+    background: #ffffff !important;
+    border: 1px solid #22c55e !important;
+    color: #16a34a !important;
+    font-weight: 500 !important;
+    font-size: 11.5px !important;
+    height: 29px !important;
+    padding: 0 10px !important;
+    border-radius: 6px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    white-space: nowrap !important;
+    transition: all 0.15s ease !important;
+    cursor: pointer !important;
 }
 .btn-action-ready:hover {
     background: #f0fdf4 !important;
-    border-color: #22c55e !important;
+    border-color: #15803d !important;
     color: #15803d !important;
 }
 
 .btn-action-cancel {
     background: #ffffff !important;
-    border: 1px solid #fca5a5 !important;
+    border: 1px solid #ef4444 !important;
     color: #dc2626 !important;
     font-weight: 500 !important;
     font-size: 11.5px !important;
-    padding: 3.5px 11px !important;
-    border-radius: 20px !important;
+    height: 29px !important;
+    padding: 0 10px !important;
+    border-radius: 6px !important;
     display: inline-flex !important;
     align-items: center !important;
     gap: 5px !important;
     white-space: nowrap !important;
     transition: all 0.15s ease !important;
+    cursor: pointer !important;
 }
 .btn-action-cancel:hover {
     background: #fef2f2 !important;
-    border-color: #ef4444 !important;
+    border-color: #b91c1c !important;
     color: #b91c1c !important;
 }
 
-.btn-action-reready {
-    background: #ffffff !important;
-    border: 1px solid #93c5fd !important;
-    color: #2563eb !important;
-    font-weight: 500 !important;
-    font-size: 11.5px !important;
-    padding: 3.5px 11px !important;
-    border-radius: 20px !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 5px !important;
-    white-space: nowrap !important;
-    transition: all 0.15s ease !important;
-}
-.btn-action-reready:hover {
-    background: #eff6ff !important;
-    border-color: #3b82f6 !important;
-    color: #1d4ed8 !important;
-}
-
+/* Consistent secondary button (View) */
 .btn-action-view {
-    background: #ffffff !important;
-    border: 1px solid #cbd5e1 !important;
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
     color: #334155 !important;
     font-weight: 500 !important;
-    font-size: 11.5px !important;
-    padding: 3.5px 13px !important;
-    border-radius: 20px !important;
+    font-size: 12px !important;
+    height: 29px !important;
+    padding: 0 12px !important;
+    border-radius: 6px !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -729,32 +742,34 @@ function statusBadge($s) {
     transition: all 0.15s ease !important;
 }
 .btn-action-view:hover {
-    background: #f8fafc !important;
-    border-color: #94a3b8 !important;
+    background: #f1f5f9 !important;
+    border-color: #cbd5e1 !important;
     color: #0f172a !important;
 }
 
-/* Three-dots menu */
+/* Three-dots menu for less frequently used actions */
 .action-menu-wrapper {
     position: relative;
     display: inline-flex;
 }
 .btn-action-more {
     background: transparent;
-    border: none;
-    padding: 4px 6px;
-    color: #64748b;
-    font-size: 14px;
+    border: 1px solid transparent;
+    width: 29px;
+    height: 29px;
+    color: #778399;
+    font-size: 13px;
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: 6px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     line-height: 1;
-    transition: background 0.15s ease, color 0.15s ease;
+    transition: all 0.15s ease;
 }
 .btn-action-more:hover {
     background: #f1f5f9;
+    border-color: #e2e8f0;
     color: #0f172a;
 }
 .action-dropdown-menu {
