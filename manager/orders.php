@@ -394,7 +394,7 @@ function statusBadge($s) {
                                         data-number="<?= e($order['order_number']) ?>"
                                         data-payment="<?= e($order['payment_status']) ?>"
                                         title="Re-dispatch order to Leajlak and mark Ready">
-                                    <i class="fa-solid fa-rotate-right"></i> Re-Ready
+                                    <i class="fa-solid fa-rotate-right"></i> Re-Dispatch
                                 </button>
                             <?php endif; ?>
 
