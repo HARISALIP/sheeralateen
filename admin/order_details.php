@@ -272,6 +272,10 @@ $itemStmt = $db->prepare("SELECT * FROM order_items WHERE order_id = :id ORDER B
 $itemStmt->execute([':id' => $orderId]);
 $items = $itemStmt->fetchAll();
 
+// Check Branch Stock Availability (Option B)
+$inventoryService = new InventoryService($db);
+$stockStatus = $inventoryService->checkOrderStockStatus($orderId, (int)($order['assigned_branch_id'] ?? 0));
+
 $pageTitle = 'Order Details #' . $order['order_number'];
 require_once __DIR__ . '/includes/header.php';
 require_once __DIR__ . '/includes/sidebar.php';
@@ -299,6 +303,26 @@ function statusBadge($s) {
         <a href="orders.php" class="btn btn-outline"><i class="fa-solid fa-arrow-left"></i> Back to Orders</a>
     </div>
 </div>
+
+<?php if (!$stockStatus['all_in_stock']): ?>
+<div style="background:#fffbeb; border:1px solid #fef3c7; border-left:4px solid #f59e0b; border-radius:8px; padding:14px 18px; margin-bottom:24px; color:#92400e; display:flex; align-items:flex-start; gap:14px;">
+    <i class="fa-solid fa-triangle-exclamation" style="font-size:1.4rem; color:#f59e0b; margin-top:2px;"></i>
+    <div>
+        <strong style="font-size:1rem; display:block; margin-bottom:4px;">Stock Warning: Items Out of Stock at Assigned Branch (<?= htmlspecialchars($order['branch_name'] ?? 'Branch') ?>)</strong>
+        <p style="margin:0 0 6px 0; font-size:0.9rem;">The following item(s) in this order have insufficient stock at this branch:</p>
+        <ul style="margin:0 0 8px 18px; padding:0; font-size:0.88rem;">
+            <?php foreach ($stockStatus['out_of_stock_items'] as $oos): ?>
+                <li><strong><?= htmlspecialchars($oos['item_name']) ?></strong> (Ordered: <?= $oos['required'] ?>, Available at branch: <?= $oos['available'] ?>)</li>
+            <?php endforeach; ?>
+        </ul>
+        <?php if (!empty($stockStatus['suggested_branch'])): ?>
+            <div style="background:#fef3c7; padding:6px 10px; border-radius:6px; font-size:0.85rem; display:inline-block;">
+                <i class="fa-solid fa-store"></i> Suggested Alternative: <strong><?= htmlspecialchars($stockStatus['suggested_branch']['branch_name']) ?></strong> has stock (<?= $stockStatus['suggested_branch']['available_quantity'] ?> available). Phone: <?= htmlspecialchars($stockStatus['suggested_branch']['phone'] ?? 'N/A') ?>
+            </div>
+        <?php endif; ?>
+    </div>
+</div>
+<?php endif; ?>
 
 <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
     
