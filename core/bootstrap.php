@@ -43,6 +43,7 @@ require_once __DIR__ . '/SyncQueue.php';
 require_once __DIR__ . '/ShopifySyncService.php';
 require_once __DIR__ . '/LeajlakService.php';
 require_once __DIR__ . '/GeoService.php';
+require_once __DIR__ . '/InventoryService.php';
 
 // Auto-authenticate via persistent Remember Me token if session is absent
 if (!Auth::isLoggedIn() && $hasRemember) {

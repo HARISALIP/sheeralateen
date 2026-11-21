@@ -17,6 +17,9 @@ $currentPage = basename($_SERVER['PHP_SELF']);
         <a href="dashboard.php" class="nav-item <?= $currentPage === 'dashboard.php' ? 'active' : '' ?>" title="Dashboard">
             <i class="fa-solid fa-house"></i> <span>Dashboard</span>
         </a>
+        <a href="inventory.php" class="nav-item <?= $currentPage === 'inventory.php' ? 'active' : '' ?>" title="Inventory">
+            <i class="fa-solid fa-boxes-stacked"></i> <span>Inventory</span>
+        </a>
         <a href="orders.php" class="nav-item <?= $currentPage === 'orders.php' ? 'active' : '' ?>" title="Orders">
             <i class="fa-solid fa-box"></i> <span>Orders</span>
         </a>
