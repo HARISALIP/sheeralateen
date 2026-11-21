@@ -137,6 +137,28 @@ class InventoryService
 
             $this->db->commit();
 
+            // Attempt Shopify Sync if branch has a mapped Shopify Location & product has inventory_item_id
+            $syncStatus = 'local_only';
+            if ($this->shopify && $this->shopify->isConfigured()) {
+                try {
+                    $bStmt = $this->db->prepare("SELECT shopify_location_id FROM branches WHERE id = :bid");
+                    $bStmt->execute([':bid' => $branchId]);
+                    $locId = $bStmt->fetchColumn();
+
+                    $pStmt = $this->db->prepare("SELECT shopify_inventory_item_id FROM products_catalog WHERE id = :pid");
+                    $pStmt->execute([':pid' => $productId]);
+                    $invItemId = $pStmt->fetchColumn();
+
+                    if ($locId && $invItemId) {
+                        $this->shopify->setInventoryQuantity($locId, $invItemId, $newQuantity);
+                        $syncStatus = 'synced';
+                        $this->db->prepare("UPDATE inventory_logs SET sync_status = 'synced' WHERE branch_id = :bid AND product_id = :pid ORDER BY id DESC LIMIT 1")->execute([':bid' => $branchId, ':pid' => $productId]);
+                    }
+                } catch (Exception $syncEx) {
+                    $this->db->prepare("UPDATE inventory_logs SET sync_status = 'failed', error_details = :err WHERE branch_id = :bid AND product_id = :pid ORDER BY id DESC LIMIT 1")->execute([':bid' => $branchId, ':pid' => $productId, ':err' => $syncEx->getMessage()]);
+                }
+            }
+
             ActivityLogger::log(
                 $userId,
                 'inventory_updated',

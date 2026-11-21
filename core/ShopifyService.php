@@ -208,6 +208,117 @@ class ShopifyService
     }
 
     /**
+     * Executes a GraphQL query or mutation against Shopify Admin API.
+     */
+    public function graphql(string $query, array $variables = []): array
+    {
+        if (!$this->isConfigured()) {
+            throw new Exception("Shopify API not configured.");
+        }
+
+        $url = $this->storeUrl . '/admin/api/' . $this->apiVersion . '/graphql.json';
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+
+        $headers = [
+            'Content-Type: application/json',
+            'X-Shopify-Access-Token: ' . $this->apiToken
+        ];
+
+        $payload = json_encode([
+            'query'     => $query,
+            'variables' => $variables
+        ]);
+
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+
+        $response = curl_exec($ch);
+        $error = curl_error($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($error) {
+            throw new Exception("cURL GraphQL Error: " . $error);
+        }
+
+        $decoded = json_decode($response, true);
+
+        if ($httpCode >= 400 || !empty($decoded['errors'])) {
+            $msg = !empty($decoded['errors']) 
+                ? (is_array($decoded['errors']) ? json_encode($decoded['errors']) : $decoded['errors']) 
+                : "HTTP $httpCode";
+            throw new Exception("Shopify GraphQL Error: " . $msg);
+        }
+
+        return $decoded['data'] ?? [];
+    }
+
+    /**
+     * Set inventory quantity on Shopify for a specific location and inventory item.
+     */
+    public function setInventoryQuantity(int|string $locationId, int|string $inventoryItemId, int $quantity): array
+    {
+        $mutation = '
+            mutation inventorySetQuantities($input: InventorySetQuantitiesInput!) {
+                inventorySetQuantities(input: $input) {
+                    userErrors {
+                        field
+                        message
+                        code
+                    }
+                    inventoryAdjustmentGroup {
+                        createdAt
+                        reason
+                        changes {
+                            name
+                            delta
+                            quantityAfterChange
+                        }
+                    }
+                }
+            }
+        ';
+
+        // Format Shopify GIDs if raw integers passed
+        $locGid = str_starts_with((string)$locationId, 'gid://') 
+            ? (string)$locationId 
+            : 'gid://shopify/Location/' . $locationId;
+
+        $itemGid = str_starts_with((string)$inventoryItemId, 'gid://') 
+            ? (string)$inventoryItemId 
+            : 'gid://shopify/InventoryItem/' . $inventoryItemId;
+
+        $variables = [
+            'input' => [
+                'reason' => 'correction',
+                'name'   => 'available',
+                'ignoreCompareQuantity' => true,
+                'quantities' => [
+                    [
+                        'inventoryItemId' => $itemGid,
+                        'locationId'      => $locGid,
+                        'quantity'        => $quantity
+                    ]
+                ]
+            ]
+        ];
+
+        $res = $this->graphql($mutation, $variables);
+        $errors = $res['inventorySetQuantities']['userErrors'] ?? [];
+
+        if (!empty($errors)) {
+            $msg = implode(', ', array_map(fn($e) => $e['message'], $errors));
+            throw new Exception("Shopify Inventory Set Error: " . $msg);
+        }
+
+        return $res;
+    }
+
+    /**
      * Core cURL request method
      */
     private function request(string $method, string $endpoint, ?array $payload = null): array

@@ -73,6 +73,9 @@ require_once __DIR__ . '/includes/topbar.php';
         <h1 class="page-title">Master Inventory Management</h1>
         <p class="page-subtitle">Oversee and update stock across all 28 physical branches.</p>
     </div>
+    <div>
+        <a href="shopify_auto_map_locations.php" class="btn btn-outline"><i class="fa-brands fa-shopify"></i> Map Shopify Locations</a>
+    </div>
 </div>
 
 <?php if ($msg = get_flash('success')): ?>
