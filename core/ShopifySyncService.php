@@ -310,7 +310,17 @@ class ShopifySyncService
             return 'skipped';
         }
 
-        $createdAt = isset($shopifyOrder['created_at']) ? date('Y-m-d H:i:s', strtotime($shopifyOrder['created_at'])) : date('Y-m-d H:i:s');
+        // Ensure order creation timestamp is accurately converted to Asia/Riyadh (Jeddah local time)
+        $createdAt = date('Y-m-d H:i:s');
+        if (!empty($shopifyOrder['created_at'])) {
+            try {
+                $dt = new DateTime($shopifyOrder['created_at']);
+                $dt->setTimezone(new DateTimeZone('Asia/Riyadh'));
+                $createdAt = $dt->format('Y-m-d H:i:s');
+            } catch (Exception $tzEx) {
+                $createdAt = date('Y-m-d H:i:s', strtotime($shopifyOrder['created_at']));
+            }
+        }
 
         // Insert new order
         $insertStmt = $this->db->prepare("
