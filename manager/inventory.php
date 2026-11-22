@@ -73,9 +73,6 @@ require_once __DIR__ . '/includes/topbar.php';
         <h1 class="page-title">Branch Inventory</h1>
         <p class="page-subtitle">Managing stock for: <strong><?= htmlspecialchars($branch['branch_name'] ?? 'Your Branch') ?></strong> (<?= htmlspecialchars($branch['branch_code'] ?? '') ?>)</p>
     </div>
-    <div>
-        <a href="#history-section" class="btn btn-outline btn-sm"><i class="fa-solid fa-clock-rotate-left"></i> View Stock History</a>
-    </div>
 </div>
 
 <?php if ($msg = get_flash('success')): ?>

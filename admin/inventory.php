@@ -73,9 +73,10 @@ require_once __DIR__ . '/includes/topbar.php';
         <h1 class="page-title">Master Inventory Management</h1>
         <p class="page-subtitle">Oversee and update stock across all 28 physical branches.</p>
     </div>
-    <div style="display:flex; gap:8px;">
-        <a href="shopify_catalog_sync.php" class="btn btn-primary" onclick="return confirm('Fetch and refresh the entire product catalog directly from Shopify?');"><i class="fa-solid fa-arrows-rotate"></i> Sync Products from Shopify</a>
-        <a href="shopify_auto_map_locations.php" class="btn btn-outline"><i class="fa-brands fa-shopify"></i> Map Shopify Locations</a>
+    <div>
+        <a href="shopify_catalog_sync.php" class="btn btn-outline" style="font-size:13px;" onclick="return confirm('Fetch and refresh the entire product catalog directly from Shopify?');">
+            <i class="fa-solid fa-arrows-rotate"></i> Sync Products from Shopify
+        </a>
     </div>
 </div>
 
@@ -96,7 +97,6 @@ require_once __DIR__ . '/includes/topbar.php';
                     <?php foreach ($branches as $b): ?>
                         <option value="<?= $b['id'] ?>" <?= $selectedBranchId === (int)$b['id'] ? 'selected' : '' ?>>
                             <?= htmlspecialchars($b['branch_name']) ?> (<?= htmlspecialchars($b['branch_code']) ?>)
-                            <?= !empty($b['shopify_location_id']) ? '— [Shopify Synced]' : '' ?>
                         </option>
                     <?php endforeach; ?>
                 </select>
