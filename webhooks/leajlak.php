@@ -75,11 +75,15 @@ try {
         $currentStatus = (string) $order["current_status"];
 
         $finalStatusUpdate = "";
+        $paymentUpdate = "";
         if (in_array($newLocalStatus, ["Out For Delivery", "Delivered", "Cancelled", "Returned"]) || ($currentStatus === "Cancelled" && in_array($newLocalStatus, ["Accepted", "Preparing"]))) {
             $finalStatusUpdate = "current_status = :status,";
         }
+        if ($newLocalStatus === "Delivered") {
+            $paymentUpdate = "payment_status = 'paid',";
+        }
         
-        $stmtStr = "UPDATE orders SET $finalStatusUpdate leajlak_status = :lstatus, leajlak_order_id = COALESCE(:dorder_id, leajlak_order_id), leajlak_captain_name = COALESCE(:cname, leajlak_captain_name), leajlak_captain_phone = COALESCE(:cphone, leajlak_captain_phone), updated_at = NOW() WHERE id = :id";
+        $stmtStr = "UPDATE orders SET $finalStatusUpdate $paymentUpdate leajlak_status = :lstatus, leajlak_order_id = COALESCE(:dorder_id, leajlak_order_id), leajlak_captain_name = COALESCE(:cname, leajlak_captain_name), leajlak_captain_phone = COALESCE(:cphone, leajlak_captain_phone), updated_at = NOW() WHERE id = :id";
         $params = [":lstatus" => $leajlakStatus, ":dorder_id" => $dspOrderId, ":cname" => $captainName, ":cphone" => $captainPhone, ":id" => $localOrderId];
         if ($finalStatusUpdate) { $params[":status"] = $newLocalStatus; }
         $db->prepare($stmtStr)->execute($params);
@@ -93,6 +97,9 @@ try {
 
         $queue = new SyncQueue($db);
         $queue->enqueue("order", $localOrderId, $shopifyOrderId, "push_status");
+        if ($newLocalStatus === "Delivered") {
+            $queue->enqueue("order", $localOrderId, $shopifyOrderId, "push_payment");
+        }
         try {
             $api  = new ShopifyService($db);
             $sync = new ShopifySyncService($db, $api, $queue);

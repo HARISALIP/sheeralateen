@@ -32,6 +32,13 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Prevent browser stale caching across admin & manager panels
+if (!headers_sent() && php_sapi_name() !== 'cli') {
+    header("Cache-Control: no-cache, no-store, must-revalidate, max-age=0");
+    header("Pragma: no-cache");
+    header("Expires: 0");
+}
+
 require_once __DIR__ . '/Database.php';
 require_once __DIR__ . '/ActivityLogger.php';
 require_once __DIR__ . '/Auth.php';

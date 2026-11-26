@@ -22,6 +22,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $newStatus = $_POST['new_status'] ?? '';
     $newPaymentStatus = $_POST['new_payment_status'] ?? '';
     
+    // Automatically set payment to paid if order is marked Delivered
+    if ($newStatus === 'Delivered' && (empty($newPaymentStatus) || $newPaymentStatus === 'pending')) {
+        $newPaymentStatus = 'paid';
+    }
+    
     // valid statuses
     $validStatuses = ['New', 'Assigned', 'Accepted', 'Preparing', 'Ready', 'Out For Delivery', 'Delivered', 'Cancelled', 'Returned'];
     $validPaymentStatuses = ['pending', 'paid', 'failed', 'refunded', 'partially_paid', 'partially_refunded', 'unpaid'];
@@ -141,6 +146,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     header('Location: orders.php');
     exit;
 }
+
+// --- POST HANDLER: Update Payment Status ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_payment_status') {
+    if (!csrf_verify($_POST['csrf_token'] ?? null)) {
+        flash('error', 'Security token mismatch.');
+        header('Location: orders.php');
+        exit;
+    }
+
+    $orderId = (int) ($_POST['order_id'] ?? 0);
+    $newPaymentStatus = strtolower(trim($_POST['new_payment_status'] ?? ''));
+    $validPaymentStatuses = ['pending', 'paid', 'failed', 'refunded', 'partially_paid', 'partially_refunded', 'unpaid'];
+
+    if ($orderId > 0 && in_array($newPaymentStatus, $validPaymentStatuses)) {
+        $stmt = $db->prepare("SELECT order_number, shopify_order_id, payment_status FROM orders WHERE id = :id AND deleted_at IS NULL");
+        $stmt->execute([':id' => $orderId]);
+        $order = $stmt->fetch();
+
+        if ($order && $order['payment_status'] !== $newPaymentStatus) {
+            $oldPayment = $order['payment_status'];
+            $db->prepare("UPDATE orders SET payment_status = :pstatus, updated_at = NOW() WHERE id = :id")
+               ->execute([':pstatus' => $newPaymentStatus, ':id' => $orderId]);
+
+            ActivityLogger::log($_SESSION['user_id'] ?? null, 'payment_status_update', "Order {$order['order_number']} payment changed: {$oldPayment} -> {$newPaymentStatus}", null, $orderId);
+
+            if ($order['shopify_order_id']) {
+                $queue = new SyncQueue($db);
+                $queue->enqueue('order', $orderId, $order['shopify_order_id'], 'push_payment');
+                try {
+                    $api = new ShopifyService($db);
+                    $sync = new ShopifySyncService($db, $api, $queue);
+                    $sync->processQueue(5);
+                } catch (Exception $e) {}
+            }
+
+            flash('success', "Order {$order['order_number']} payment status updated to " . ucfirst(str_replace('_', ' ', $newPaymentStatus)) . ".");
+        }
+    }
+    header('Location: orders.php');
+    exit;
+}
+
+// Auto-calibrate: ensure any Delivered order with non-paid payment status is set to paid
+try {
+    $db->exec("UPDATE orders SET payment_status = 'paid', updated_at = NOW() WHERE current_status = 'Delivered' AND payment_status != 'paid' AND deleted_at IS NULL");
+} catch (\Throwable $e) {}
 
 // --- FILTER & PAGINATION ---
 $search = trim($_GET['search'] ?? '');
@@ -920,7 +971,14 @@ function statusBadge($s) {
                             default => 'status-pending'
                         };
                         ?>
-                        <span class="status <?= $pClass ?> <?= $pSlug ?>"><?= ucfirst(str_replace('_', ' ', $pStatus)) ?></span>
+                        <span class="status <?= $pClass ?> <?= $pSlug ?> btn-trigger-payment"
+                              data-id="<?= $order['id'] ?>"
+                              data-number="<?= e($order['order_number']) ?>"
+                              data-payment="<?= e($pStatus) ?>"
+                              style="cursor: pointer; display: inline-flex; align-items: center; gap: 5px;"
+                              title="Click to change payment status">
+                            <?= ucfirst(str_replace('_', ' ', $pStatus)) ?> <i class="fa-solid fa-pen" style="font-size: 0.65rem; opacity: 0.6;"></i>
+                        </span>
                     </td>
                     <td class="col-status">
                         <?= statusBadge($order['current_status']) ?>
@@ -973,6 +1031,13 @@ function statusBadge($s) {
                                             <i class="fa-solid fa-phone"></i> Call Customer
                                         </a>
                                     <?php endif; ?>
+                                    <div class="dropdown-divider"></div>
+                                    <button type="button" class="dropdown-item text-success btn-menu-payment"
+                                            data-id="<?= $order['id'] ?>"
+                                            data-number="<?= e($order['order_number']) ?>"
+                                            data-payment="<?= e($pStatus) ?>">
+                                        <i class="fa-solid fa-credit-card"></i> Change Payment Status
+                                    </button>
                                     <div class="dropdown-divider"></div>
                                     <?php if ($order['current_status'] !== 'Cancelled'): ?>
                                         <button type="button" class="dropdown-item text-danger btn-menu-cancel"
@@ -1125,6 +1190,48 @@ function statusBadge($s) {
     </div>
 </div>
 
+<!-- Modal: Change Payment Status -->
+<div class="modal-overlay" id="modal-payment-status">
+    <div class="modal-dialog modal-sm">
+        <form method="POST" action="orders.php" class="modal-content">
+            <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
+            <input type="hidden" name="action" value="update_payment_status">
+            <input type="hidden" name="order_id" id="modal_payment_order_id" value="">
+            
+            <div class="modal-header">
+                <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-credit-card" style="color: var(--primary);"></i> Payment Status
+                </h3>
+                <button type="button" class="modal-close" onclick="closeModal('modal-payment-status')">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body" style="padding: 20px 24px;">
+                <p style="margin: 0 0 16px; font-size: 14px; color: var(--text-main);">
+                    Update payment status for order <strong id="modal_payment_order_number"></strong>:
+                </p>
+                <div class="form-group">
+                    <label for="select_payment_status" style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500;">Payment Status</label>
+                    <select name="new_payment_status" id="select_payment_status" class="form-control" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 14px;" required>
+                        <option value="paid">Paid</option>
+                        <option value="pending">Pending</option>
+                        <option value="refunded">Refunded</option>
+                        <option value="failed">Failed</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="btn btn-outline" onclick="closeModal('modal-payment-status')">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="btn-submit-payment">
+                    <i class="fa-solid fa-check"></i> Save & Sync
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 function closeModal(id) {
     document.getElementById(id)?.classList.remove('show');
@@ -1229,6 +1336,33 @@ document.querySelectorAll('.btn-menu-reready').forEach(btn => {
         document.getElementById('modal_reready_payment_status').value = this.dataset.payment || 'pending';
         document.getElementById('modal-reready-order').classList.add('show');
     });
+});
+
+// 5. Payment Modal triggers (badge click & menu click)
+function openPaymentModal(orderId, orderNumber, paymentStatus) {
+    document.getElementById('modal_payment_order_id').value = orderId;
+    document.getElementById('modal_payment_order_number').innerText = orderNumber;
+    const sel = document.getElementById('select_payment_status');
+    if (sel) {
+        sel.value = paymentStatus || 'pending';
+    }
+    document.getElementById('modal-payment-status').classList.add('show');
+}
+
+document.querySelectorAll('.btn-trigger-payment, .btn-menu-payment').forEach(el => {
+    el.addEventListener('click', function(e) {
+        e.stopPropagation();
+        document.querySelectorAll('.action-dropdown-menu.show').forEach(m => m.classList.remove('show'));
+        openPaymentModal(this.dataset.id, this.dataset.number, this.dataset.payment);
+    });
+});
+
+document.getElementById('modal-payment-status')?.querySelector('form')?.addEventListener('submit', function() {
+    const btn = document.getElementById('btn-submit-payment');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving...';
+    }
 });
 
 // Manual Sync Button

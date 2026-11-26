@@ -25,7 +25,7 @@ $recentOrders = $db->query("
            o.total_amount, o.created_at
     FROM orders o
     WHERE o.assigned_branch_id = $branchId AND o.deleted_at IS NULL
-    ORDER BY o.created_at DESC
+    ORDER BY CAST(REPLACE(o.order_number, '#', '') AS UNSIGNED) DESC
     LIMIT 10
 ")->fetchAll();
 

@@ -26,6 +26,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $newStatus = $_POST['new_status'] ?? '';
     $newPaymentStatus = $_POST['new_payment_status'] ?? '';
     
+    // Automatically set payment to paid if order is marked Delivered
+    if ($newStatus === 'Delivered' && (empty($newPaymentStatus) || $newPaymentStatus === 'pending')) {
+        $newPaymentStatus = 'paid';
+    }
+    
     // valid statuses
     $validStatuses = ['New', 'Assigned', 'Accepted', 'Preparing', 'Ready', 'Out For Delivery', 'Delivered', 'Cancelled', 'Returned'];
     $validPaymentStatuses = ['pending', 'paid', 'failed', 'refunded', 'partially_paid', 'partially_refunded', 'unpaid'];
@@ -129,6 +134,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     exit;
 }
 
+// --- POST HANDLER: Update Payment Status ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_payment_status') {
+    $updateOrderId = (int)($_POST['order_id'] ?? 0);
+    if (!csrf_verify($_POST['csrf_token'] ?? null)) {
+        flash('error', 'Security token mismatch.');
+        header('Location: order_details.php?id=' . $updateOrderId);
+        exit;
+    }
+
+    $newPaymentStatus = strtolower(trim($_POST['new_payment_status'] ?? ''));
+    $validPaymentStatuses = ['pending', 'paid', 'failed', 'refunded', 'partially_paid', 'partially_refunded', 'unpaid'];
+
+    if ($updateOrderId > 0 && in_array($newPaymentStatus, $validPaymentStatuses)) {
+        $stmt = $db->prepare("SELECT order_number, shopify_order_id, payment_status FROM orders WHERE id = :id AND assigned_branch_id = :bid AND deleted_at IS NULL");
+        $stmt->execute([':id' => $updateOrderId, ':bid' => $branchId]);
+        $orderCheck = $stmt->fetch();
+
+        if ($orderCheck && $orderCheck['payment_status'] !== $newPaymentStatus) {
+            $oldPayment = $orderCheck['payment_status'];
+            $db->prepare("UPDATE orders SET payment_status = :pstatus, updated_at = NOW() WHERE id = :id")
+               ->execute([':pstatus' => $newPaymentStatus, ':id' => $updateOrderId]);
+
+            ActivityLogger::log($_SESSION['user_id'] ?? null, 'payment_status_update', "Order {$orderCheck['order_number']} payment changed: {$oldPayment} -> {$newPaymentStatus}", null, $updateOrderId);
+
+            if ($orderCheck['shopify_order_id']) {
+                $queue = new SyncQueue($db);
+                $queue->enqueue('order', $updateOrderId, $orderCheck['shopify_order_id'], 'push_payment');
+                try {
+                    $api = new ShopifyService($db);
+                    $sync = new ShopifySyncService($db, $api, $queue);
+                    $sync->processQueue(5);
+                } catch (Exception $e) {}
+            }
+
+            flash('success', "Order #{$orderCheck['order_number']} payment status updated to " . ucfirst(str_replace('_', ' ', $newPaymentStatus)) . ".");
+        }
+    }
+    header('Location: order_details.php?id=' . $updateOrderId);
+    exit;
+}
+
+// Auto-calibrate: ensure any Delivered order with non-paid payment status is set to paid for this branch
+try {
+    $db->prepare("UPDATE orders SET payment_status = 'paid', updated_at = NOW() WHERE current_status = 'Delivered' AND payment_status != 'paid' AND assigned_branch_id = :bid AND deleted_at IS NULL")->execute([':bid' => $branchId]);
+} catch (\Throwable $e) {}
+
 $orderId = (int) ($_GET['id'] ?? 0);
 
 if (!$orderId) {
@@ -151,9 +202,10 @@ if (isset($_GET['ajax_status'])) {
     echo json_encode([
         'id'             => (int) $order['id'],
         'current_status' => (string) $order['current_status'],
+        'payment_status' => (string) ($order['payment_status'] ?? ''),
         'leajlak_status' => (string) ($order['leajlak_status'] ?? ''),
         'updated_at'     => (string) $order['updated_at'],
-        'is_final'       => in_array($order['current_status'], ['Delivered', 'Cancelled', 'Returned'])
+        'is_final'       => false
     ]);
     exit;
 }
@@ -281,10 +333,18 @@ function statusBadge($s) {
             
             <div style="display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center;">
                 <strong>Payment Status:</strong>
-                <?php
-                    $pClass = $order['payment_status'] === 'paid' ? 'success' : ($order['payment_status'] === 'failed' ? 'danger' : 'warning');
-                ?>
-                <span class="status <?= $pClass ?>"><?= ucfirst($order['payment_status']) ?></span>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <?php
+                        $pClass = $order['payment_status'] === 'paid' ? 'success' : ($order['payment_status'] === 'failed' ? 'danger' : 'warning');
+                    ?>
+                    <span class="status <?= $pClass ?>"><?= ucfirst(str_replace('_', ' ', $order['payment_status'])) ?></span>
+                    <button type="button"
+                            onclick="document.getElementById('modal-update-payment').classList.add('show')"
+                            title="Change Payment Status"
+                            style="background: none; border: 1px solid #cbd5e1; border-radius: 5px; padding: 2px 7px; cursor: pointer; color: #64748b; font-size: 0.78rem; display: inline-flex; align-items: center; gap: 4px; line-height: 1.4;">
+                        <i class="fa-solid fa-pen-to-square" style="font-size: 0.72rem;"></i> Change
+                    </button>
+                </div>
             </div>
             
             <?php 
@@ -757,7 +817,7 @@ function statusBadge($s) {
                 <div class="form-group">
                     <label for="new_status">Order Status</label>
                     <select name="new_status" id="new_status" class="form-control" required>
-                          <?php foreach(array_unique(array_merge(["New","Ready","Out For Delivery","Cancelled"], [$order["current_status"]])) as $st): ?>
+                          <?php foreach(array_unique(array_merge(["New","Ready","Out For Delivery","Delivered","Cancelled"], [$order["current_status"]])) as $st): ?>
                               <option value="<?= $st ?>"><?= $st ?></option>
                           <?php endforeach; ?>
                       </select>
@@ -776,6 +836,46 @@ function statusBadge($s) {
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline" onclick="closeModal('modal-update-status')">Cancel</button>
                 <button type="submit" class="btn btn-primary">Save & Sync</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- UPDATE PAYMENT MODAL -->
+<div class="modal-overlay" id="modal-update-payment" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-sm" role="document">
+        <form method="POST" action="" class="modal-content">
+            <input type="hidden" name="csrf_token" value="<?= csrf_token() ?>">
+            <input type="hidden" name="action" value="update_payment_status">
+            <input type="hidden" name="order_id" value="<?= (int)$order['id'] ?>">
+            
+            <div class="modal-header">
+                <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-credit-card" style="color: var(--primary);"></i> Update Payment Status
+                </h3>
+                <button type="button" class="modal-close" aria-label="Close" onclick="closeModal('modal-update-payment')">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="modal-body" style="padding: 20px 24px;">
+                <p style="margin: 0 0 16px; font-size: 14px; color: var(--text-main);">
+                    Select payment status for order <strong>#<?= e($order['order_number']) ?></strong>:
+                </p>
+                <div class="form-group">
+                    <label for="detail_payment_status" style="display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500;">Payment Status</label>
+                    <select name="new_payment_status" id="detail_payment_status" class="form-control" style="width: 100%; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 14px;" required>
+                        <option value="paid" <?= $order['payment_status'] === 'paid' ? 'selected' : '' ?>>Paid</option>
+                        <option value="pending" <?= $order['payment_status'] === 'pending' ? 'selected' : '' ?>>Pending</option>
+                        <option value="refunded" <?= in_array($order['payment_status'], ['refunded', 'partially_refunded']) ? 'selected' : '' ?>>Refunded</option>
+                        <option value="failed" <?= $order['payment_status'] === 'failed' ? 'selected' : '' ?>>Failed</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="btn btn-outline" onclick="closeModal('modal-update-payment')">Cancel</button>
+                <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> Save & Sync</button>
             </div>
         </form>
     </div>
@@ -801,24 +901,32 @@ document.querySelectorAll('.btn-update-status').forEach(btn => {
     });
 });
 
+// Auto-switch payment to Paid when Delivered is selected
+document.getElementById('new_status')?.addEventListener('change', function() {
+    if (this.value === 'Delivered') {
+        const paySel = document.getElementById('new_payment_status');
+        if (paySel) paySel.value = 'paid';
+    }
+});
+
 function closeModal(id) {
-    document.getElementById(id).classList.remove('show');
+    document.getElementById(id)?.classList.remove('show');
 }
 
 // Close on backdrop click
-document.getElementById('modal-update-status').addEventListener('click', function(e) {
-    if (e.target === this) closeModal('modal-update-status');
+document.querySelectorAll('.modal-overlay').forEach(m => {
+    m.addEventListener('click', function(e) {
+        if (e.target === this) closeModal(this.id);
+    });
 });
 </script>
 
 <script>
 (function() {
-    const isFinal = <?= json_encode(in_array($order['current_status'], ['Delivered', 'Cancelled', 'Returned'])) ?>;
-    if (isFinal) return;
-
     let lastUpdatedAt = <?= json_encode((string)$order['updated_at']) ?>;
     let lastLeajlakStatus = <?= json_encode((string)($order['leajlak_status'] ?? '')) ?>;
     let lastStatus = <?= json_encode((string)$order['current_status']) ?>;
+    let lastPayment = <?= json_encode((string)$order['payment_status']) ?>;
     const orderId = <?= (int)$order['id'] ?>;
 
     function checkLiveStatus() {
@@ -826,7 +934,9 @@ document.getElementById('modal-update-status').addEventListener('click', functio
 
         // Skip if a modal is open
         const statusModal = document.getElementById('modal-update-status');
-        if (statusModal && statusModal.classList.contains('show')) {
+        const paymentModal = document.getElementById('modal-update-payment');
+        if ((statusModal && statusModal.classList.contains('show')) || 
+            (paymentModal && paymentModal.classList.contains('show'))) {
             return;
         }
 
@@ -836,7 +946,10 @@ document.getElementById('modal-update-status').addEventListener('click', functio
         .then(res => res.json())
         .then(data => {
             if (data && data.updated_at) {
-                if (data.updated_at !== lastUpdatedAt || data.leajlak_status !== lastLeajlakStatus || data.current_status !== lastStatus) {
+                if (data.updated_at !== lastUpdatedAt || 
+                    data.leajlak_status !== lastLeajlakStatus || 
+                    data.current_status !== lastStatus || 
+                    data.payment_status !== lastPayment) {
                     window.location.reload();
                 }
             }
@@ -844,7 +957,7 @@ document.getElementById('modal-update-status').addEventListener('click', functio
         .catch(() => {});
     }
 
-    setInterval(checkLiveStatus, 10000);
+    setInterval(checkLiveStatus, 8000);
 })();
 </script>
 

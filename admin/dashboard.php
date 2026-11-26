@@ -35,12 +35,12 @@ $activeManagers = (int) $db->query("SELECT COUNT(*) FROM users WHERE role='branc
    RECENT ORDERS (last 6)
 ────────────────────────────────────────────────────────── */
 $recentOrders = $db->query("
-    SELECT o.order_number, o.customer_name, o.current_status,
+    SELECT o.id, o.order_number, o.customer_name, o.current_status,
            o.total_amount, o.created_at, b.branch_name
     FROM orders o
     LEFT JOIN branches b ON o.assigned_branch_id = b.id AND b.deleted_at IS NULL
     WHERE o.deleted_at IS NULL
-    ORDER BY o.created_at DESC
+    ORDER BY CAST(REPLACE(o.order_number, '#', '') AS UNSIGNED) DESC
     LIMIT 6
 ")->fetchAll();
 
@@ -291,7 +291,7 @@ require_once __DIR__ . '/includes/topbar.php';
                 <?php else: ?>
                     <?php foreach ($recentOrders as $order): ?>
                     <tr>
-                        <td><strong><?= e($order['order_number']) ?></strong></td>
+                        <td><a href="order_details.php?id=<?= $order['id'] ?>" style="color:var(--primary); font-weight:700; text-decoration:none;"><strong><?= e($order['order_number']) ?></strong></a></td>
                         <td><?= $order['branch_name'] ? e($order['branch_name']) : '<span class="text-muted">Unassigned</span>' ?></td>
                         <td><?= e($order['customer_name']) ?></td>
                         <td>

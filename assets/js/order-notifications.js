@@ -605,6 +605,102 @@
     }
 
     // -----------------------------------------------------------------------
+    // Cross-Page & Cross-Tab Real-time Synchronizer
+    // -----------------------------------------------------------------------
+    const orderSyncChannel = ('BroadcastChannel' in window) ? new BroadcastChannel('sheera_order_sync') : null;
+
+    function broadcastOrderUpdate(orderId, newStatus, paymentStatus) {
+        const payload = {
+            orderId: orderId,
+            status: newStatus,
+            payment: paymentStatus,
+            timestamp: Date.now()
+        };
+        try {
+            localStorage.setItem('sheera_order_updated', JSON.stringify(payload));
+            if (orderSyncChannel) {
+                orderSyncChannel.postMessage(payload);
+            }
+        } catch(e) {}
+    }
+
+    // Attach to all status / payment form submissions globally
+    document.addEventListener('submit', function(e) {
+        const form = e.target;
+        if (!form) return;
+        const actionInput = form.querySelector('input[name="action"]');
+        if (actionInput && (actionInput.value === 'update_status' || actionInput.value === 'update_payment_status')) {
+            const orderIdInput = form.querySelector('input[name="order_id"]');
+            const statusInput = form.querySelector('[name="new_status"]');
+            const paymentInput = form.querySelector('[name="new_payment_status"]');
+            const oid = orderIdInput ? orderIdInput.value : null;
+            const ost = statusInput ? statusInput.value : null;
+            const opy = paymentInput ? paymentInput.value : null;
+            if (oid) {
+                broadcastOrderUpdate(oid, ost, opy);
+            }
+        }
+    }, true);
+
+    function handleExternalOrderSync(data) {
+        if (!data || !data.orderId) return;
+
+        // 1. If currently on order_details.php for this exact order:
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentOrderId = urlParams.get('id');
+        if (window.location.pathname.indexOf('order_details.php') !== -1 && currentOrderId && parseInt(currentOrderId) === parseInt(data.orderId)) {
+            console.log('[OrderSync] Current order updated in another window/tab. Refreshing view...');
+            window.location.reload();
+            return;
+        }
+
+        // 2. If currently on dashboard.php:
+        if (window.location.pathname.indexOf('dashboard.php') !== -1 || window.location.pathname.endsWith('/admin/') || window.location.pathname.endsWith('/manager/')) {
+            console.log('[OrderSync] Order updated. Refreshing dashboard metrics and recent orders...');
+            window.location.reload();
+            return;
+        }
+
+        // 3. If currently on orders.php:
+        if (window.location.pathname.indexOf('orders.php') !== -1) {
+            console.log('[OrderSync] Order updated. Refreshing orders table...');
+            window.location.reload();
+            return;
+        }
+    }
+
+    if (orderSyncChannel) {
+        orderSyncChannel.onmessage = function(event) {
+            handleExternalOrderSync(event.data);
+        };
+    }
+
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'sheera_order_updated' && e.newValue) {
+            try {
+                const data = JSON.parse(e.newValue);
+                handleExternalOrderSync(data);
+            } catch(err) {}
+        }
+    });
+
+    let lastKnownSyncTime = Date.now();
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) {
+            try {
+                const stored = localStorage.getItem('sheera_order_updated');
+                if (stored) {
+                    const data = JSON.parse(stored);
+                    if (data && data.timestamp && data.timestamp > lastKnownSyncTime) {
+                        lastKnownSyncTime = data.timestamp;
+                        handleExternalOrderSync(data);
+                    }
+                }
+            } catch(e) {}
+        }
+    });
+
+    // -----------------------------------------------------------------------
     // Init
     // -----------------------------------------------------------------------
 
