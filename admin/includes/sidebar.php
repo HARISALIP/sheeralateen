@@ -32,6 +32,9 @@ $currentPage = basename($_SERVER['PHP_SELF']);
         <a href="reports.php" class="nav-item <?= $currentPage === 'reports.php' ? 'active' : '' ?>" title="Reports">
             <i class="fa-solid fa-chart-line"></i> <span>Reports</span>
         </a>
+        <a href="activity.php" class="nav-item <?= $currentPage === 'activity.php' ? 'active' : '' ?>" title="Activity Log">
+            <i class="fa-solid fa-clock-rotate-left"></i> <span>Activity Log</span>
+        </a>
     </nav>
 
     <div class="sidebar-footer">

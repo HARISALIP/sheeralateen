@@ -97,17 +97,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     }
                 }
 
-                // If still empty, fall back to clean order number
-                $cancelTargetId = !empty($dspId) ? $dspId : str_replace('#', '', $orderCheck['order_number']);
+                // Only call Leajlak cancel if the order was actually dispatched to Leajlak
+                if (!empty($dspId) || in_array($orderCheck['current_status'], ['Ready', 'Out For Delivery']) || (!empty($orderCheck['leajlak_status']) && !in_array(strtolower($orderCheck['leajlak_status']), ['canceled', 'cancelled']))) {
+                    $cancelTargetId = !empty($dspId) ? $dspId : str_replace('#', '', $orderCheck['order_number']);
+                    $leajlak = new LeajlakService($db);
+                    $cancelResult = $leajlak->cancelOrder($cancelTargetId, 'Cancelled in CRM');
 
-                $leajlak = new LeajlakService($db);
-                $cancelResult = $leajlak->cancelOrder($cancelTargetId, 'Cancelled in CRM');
-                if (!$cancelResult['success']) {
-                    $leajlakCancelWarning = $cancelResult['error'];
-                    ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_cancel_failed', 'Failed to cancel Leajlak order: ' . $cancelResult['error'], null, (int) $updateOrderId);
+                    $errLower = strtolower($cancelResult['error'] ?? '');
+                    $isBenignNoOrder = str_contains($errLower, 'no order with this awb') || str_contains($errLower, 'not found') || str_contains($errLower, 'already');
+
+                    if (!$cancelResult['success'] && !$isBenignNoOrder) {
+                        $leajlakCancelWarning = $cancelResult['error'];
+                        ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_cancel_failed', 'Failed to cancel Leajlak order: ' . $cancelResult['error'], null, (int) $updateOrderId);
+                    } else {
+                        ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_order_cancelled', 'Cancelled Leajlak order: ' . $cancelTargetId, null, (int) $updateOrderId);
+                        $db->prepare("UPDATE orders SET leajlak_status = 'Canceled' WHERE id = :id")->execute([':id' => $updateOrderId]);
+                    }
                 } else {
-                    ActivityLogger::log($_SESSION['user_id'] ?? null, 'leajlak_order_cancelled', 'Cancelled Leajlak order: ' . $cancelTargetId, null, (int) $updateOrderId);
+                    // Order was in New/Assigned/Preparing and was never dispatched to Leajlak
                     $db->prepare("UPDATE orders SET leajlak_status = 'Canceled' WHERE id = :id")->execute([':id' => $updateOrderId]);
+                    ActivityLogger::log($_SESSION['user_id'] ?? null, 'order_cancelled', "Order {$orderCheck['order_number']} cancelled before dispatch to Leajlak", null, (int) $updateOrderId);
                 }
             }
             
